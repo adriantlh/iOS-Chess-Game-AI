@@ -35,14 +35,14 @@ enum PieceType: String, Codable {
         }
     }
 
-    var symbol: String {
+    func symbol(for color: PieceColor) -> String {
         switch self {
-        case .pawn: return "♟"
-        case .rook: return "♜"
-        case .knight: return "♞"
-        case .bishop: return "♝"
-        case .queen: return "♛"
-        case .king: return "♚"
+        case .pawn: return color == .white ? "♙" : "♟"
+        case .rook: return color == .white ? "♖" : "♜"
+        case .knight: return color == .white ? "♘" : "♞"
+        case .bishop: return color == .white ? "♗" : "♝"
+        case .queen: return color == .white ? "♕" : "♛"
+        case .king: return color == .white ? "♔" : "♚"
         }
     }
 }
@@ -61,7 +61,7 @@ struct ChessPiece: Identifiable, Equatable, Codable {
     }
 
     var displaySymbol: String {
-        return type.symbol
+        return type.symbol(for: color)
     }
 
     static func == (lhs: ChessPiece, rhs: ChessPiece) -> Bool {

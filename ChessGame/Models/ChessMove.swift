@@ -49,8 +49,72 @@ struct ChessMove: Codable {
     }
 
     var notation: String {
+        if isCastling {
+            return to.col > from.col ? "O-O" : "O-O-O"
+        }
+
         let pieceSymbol = piece.type == .pawn ? "" : piece.type.rawValue.prefix(1).uppercased()
-        let capture = capturedPiece != nil ? "x" : ""
-        return "\(pieceSymbol)\(capture)\(to.algebraicNotation)"
+        let fromSquare = piece.type == .pawn && capturedPiece != nil ? from.algebraicNotation.prefix(1) : ""
+        let capture = capturedPiece != nil || isEnPassant ? "x" : ""
+        let promotion = isPromotion ? "=\(promotionPiece?.rawValue.prefix(1).uppercased() ?? "Q")" : ""
+
+        return "\(pieceSymbol)\(fromSquare)\(capture)\(to.algebraicNotation)\(promotion)"
     }
+
+    func notationWithCheck(isCheck: Bool, isCheckmate: Bool) -> String {
+        var move = notation
+        if isCheckmate {
+            move += "#"
+        } else if isCheck {
+            move += "+"
+        }
+        return move
+    }
+}
+
+struct GameRecord: Codable, Identifiable {
+    let id: UUID
+    let date: Date
+    let gameMode: GameMode
+    let playerColor: PieceColor?
+    let aiDifficulty: AIDifficulty?
+    let moves: [ChessMove]
+    let result: GameResult
+    let timeControl: TimeControl?
+
+    init(id: UUID = UUID(), date: Date = Date(), gameMode: GameMode,
+         playerColor: PieceColor? = nil, aiDifficulty: AIDifficulty? = nil,
+         moves: [ChessMove], result: GameResult, timeControl: TimeControl? = nil) {
+        self.id = id
+        self.date = date
+        self.gameMode = gameMode
+        self.playerColor = playerColor
+        self.aiDifficulty = aiDifficulty
+        self.moves = moves
+        self.result = result
+        self.timeControl = timeControl
+    }
+
+    var displayTitle: String {
+        if gameMode == .playerVsAI {
+            return "vs AI (\(aiDifficulty?.rawValue ?? ""))"
+        } else {
+            return "Player vs Player"
+        }
+    }
+
+    var displayDate: String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .short
+        return formatter.string(from: date)
+    }
+}
+
+enum GameResult: String, Codable {
+    case whiteWins = "White Wins"
+    case blackWins = "Black Wins"
+    case draw = "Draw"
+    case stalemate = "Stalemate"
+    case inProgress = "In Progress"
 }
