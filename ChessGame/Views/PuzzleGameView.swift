@@ -25,10 +25,57 @@ class PuzzleViewModel: ObservableObject {
     }
 
     func setupPuzzlePosition() {
-        // For now, we'll use the standard starting position
-        // In a full implementation, you would parse the FEN notation
-        board.setupInitialBoard()
+        // Parse FEN notation to set up puzzle position
+        parseFEN(puzzle.fen)
         board.currentTurn = puzzle.sideToMove
+    }
+
+    private func parseFEN(_ fen: String) {
+        // Clear the board first
+        board.board = Array(repeating: Array(repeating: nil, count: 8), count: 8)
+
+        let components = fen.split(separator: " ")
+        guard !components.isEmpty else { return }
+
+        let position = String(components[0])
+        let ranks = position.split(separator: "/")
+
+        // Parse board position (FEN goes from rank 8 to rank 1, we go 7 to 0)
+        for (index, rank) in ranks.enumerated() {
+            let row = 7 - index
+            var col = 0
+
+            for char in rank {
+                if let emptySquares = Int(String(char)) {
+                    // Number means empty squares
+                    col += emptySquares
+                } else {
+                    // Letter means piece
+                    if let piece = pieceFromFEN(char) {
+                        board.setPiece(piece, at: Position(row: row, col: col))
+                    }
+                    col += 1
+                }
+            }
+        }
+    }
+
+    private func pieceFromFEN(_ char: Character) -> ChessPiece? {
+        let color: PieceColor = char.isUppercase ? .white : .black
+        let lowercaseChar = char.lowercased().first!
+
+        let type: PieceType
+        switch lowercaseChar {
+        case "p": type = .pawn
+        case "r": type = .rook
+        case "n": type = .knight
+        case "b": type = .bishop
+        case "q": type = .queen
+        case "k": type = .king
+        default: return nil
+        }
+
+        return ChessPiece(type: type, color: color, hasMoved: true)
     }
 
     func handleSquareTap(row: Int, col: Int) {
