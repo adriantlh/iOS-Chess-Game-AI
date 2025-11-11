@@ -205,7 +205,9 @@ class ChessAI {
 
     private func getPositionalValue(piece: ChessPiece, position: Position) -> Int {
         // Simple positional bonuses
-        let centerBonus = (3 - abs(position.row - 3.5) + 3 - abs(position.col - 3.5)) / 10
+        let rowDistance = abs(Double(position.row) - 3.5)
+        let colDistance = abs(Double(position.col) - 3.5)
+        let centerBonus = (3.0 - rowDistance + 3.0 - colDistance) / 10.0
 
         switch piece.type {
         case .pawn:
