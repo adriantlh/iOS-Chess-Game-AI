@@ -67,6 +67,11 @@ class ChessTimer: ObservableObject {
         self.blackTimeRemaining = timeControl.initialTime
     }
 
+    deinit {
+        // Clean up timer when ChessTimer is deallocated
+        stopTimer()
+    }
+
     func start() {
         guard !isRunning else { return }
         isRunning = true
