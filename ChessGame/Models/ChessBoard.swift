@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import Combine
 
 class ChessBoard: ObservableObject, Codable {
     @Published var board: [[ChessPiece?]]

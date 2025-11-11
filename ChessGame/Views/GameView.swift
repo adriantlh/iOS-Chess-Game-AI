@@ -9,7 +9,7 @@ import SwiftUI
 
 struct GameView: View {
     @StateObject private var viewModel: ChessGameViewModel
-    @StateObject private var timer: ChessTimer?
+    @State private var timer: ChessTimer?
     @State private var showMoveHistory = false
     @State private var showGameOverAlert = false
     @State private var gameOverMessage = ""
@@ -40,11 +40,8 @@ struct GameView: View {
         vm.gameState.assistedPlayEnabled = assistedPlayEnabled
         _viewModel = StateObject(wrappedValue: vm)
 
-        if timerEnabled {
-            _timer = StateObject(wrappedValue: ChessTimer(timeControl: timeControl))
-        } else {
-            _timer = StateObject(wrappedValue: nil)
-        }
+        // Timer will be initialized in onAppear
+        _timer = State(initialValue: nil)
     }
 
     var body: some View {
@@ -193,6 +190,7 @@ struct GameView: View {
         .onAppear {
             viewModel.startNewGame()
             if timerEnabled {
+                timer = ChessTimer(timeControl: timeControl)
                 timer?.start()
             }
         }

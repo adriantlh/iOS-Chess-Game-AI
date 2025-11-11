@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import Combine
 
 enum GameMode: String, Codable, CaseIterable {
     case playerVsPlayer = "Player vs Player"
@@ -26,7 +27,7 @@ enum AIDifficulty: String, Codable, CaseIterable {
     }
 }
 
-enum GameStatus {
+enum GameStatus: Equatable {
     case inProgress
     case checkmate(winner: PieceColor)
     case stalemate
