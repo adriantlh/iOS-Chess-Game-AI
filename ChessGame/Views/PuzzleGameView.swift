@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import Combine
 
 class PuzzleViewModel: ObservableObject {
     @Published var board: ChessBoard

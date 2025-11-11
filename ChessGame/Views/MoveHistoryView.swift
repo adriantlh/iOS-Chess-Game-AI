@@ -12,45 +12,66 @@ struct MoveHistoryView: View {
     let currentMoveIndex: Int?
     let onMoveSelected: ((Int) -> Void)?
 
+    private var pairCount: Int {
+        (moves.count + 1) / 2
+    }
+
     var body: some View {
         ScrollViewReader { proxy in
-            ScrollView {
-                VStack(alignment: .leading, spacing: 0) {
-                    if moves.isEmpty {
-                        Text("No moves yet")
-                            .foregroundColor(.white.opacity(0.5))
-                            .padding()
-                    } else {
-                        ForEach(0..<((moves.count + 1) / 2), id: \.self) { pairIndex in
-                            MovePairRow(
-                                moveNumber: pairIndex + 1,
-                                whiteMove: moves[safe: pairIndex * 2],
-                                blackMove: moves[safe: pairIndex * 2 + 1],
-                                isWhiteSelected: currentMoveIndex == pairIndex * 2,
-                                isBlackSelected: currentMoveIndex == pairIndex * 2 + 1,
-                                onWhiteTap: {
-                                    onMoveSelected?(pairIndex * 2)
-                                },
-                                onBlackTap: {
-                                    if moves.indices.contains(pairIndex * 2 + 1) {
-                                        onMoveSelected?(pairIndex * 2 + 1)
-                                    }
-                                }
-                            )
-                            .id(pairIndex)
-                        }
-                    }
+            moveListView
+                .onChange(of: moves.count) { _ in
+                    scrollToLastMove(proxy: proxy)
                 }
-                .padding(.vertical, 8)
+        }
+    }
+
+    private var moveListView: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 0) {
+                if moves.isEmpty {
+                    emptyStateView
+                } else {
+                    moveRowsView
+                }
             }
-            .background(Color.black.opacity(0.3))
-            .cornerRadius(10)
-            .onChange(of: moves.count) { _ in
-                if let lastPairIndex = ((moves.count - 1) / 2) as Int? {
-                    withAnimation {
-                        proxy.scrollTo(lastPairIndex, anchor: .bottom)
+            .padding(.vertical, 8)
+        }
+        .background(Color.black.opacity(0.3))
+        .cornerRadius(10)
+    }
+
+    private var emptyStateView: some View {
+        Text("No moves yet")
+            .foregroundColor(.white.opacity(0.5))
+            .padding()
+    }
+
+    private var moveRowsView: some View {
+        ForEach(0..<pairCount, id: \.self) { pairIndex in
+            MovePairRow(
+                moveNumber: pairIndex + 1,
+                whiteMove: moves[safe: pairIndex * 2],
+                blackMove: moves[safe: pairIndex * 2 + 1],
+                isWhiteSelected: currentMoveIndex == pairIndex * 2,
+                isBlackSelected: currentMoveIndex == pairIndex * 2 + 1,
+                onWhiteTap: {
+                    onMoveSelected?(pairIndex * 2)
+                },
+                onBlackTap: {
+                    if moves.indices.contains(pairIndex * 2 + 1) {
+                        onMoveSelected?(pairIndex * 2 + 1)
                     }
                 }
+            )
+            .id(pairIndex)
+        }
+    }
+
+    private func scrollToLastMove(proxy: ScrollViewProxy) {
+        if !moves.isEmpty {
+            let lastPairIndex = (moves.count - 1) / 2
+            withAnimation {
+                proxy.scrollTo(lastPairIndex, anchor: .bottom)
             }
         }
     }
