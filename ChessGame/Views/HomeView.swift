@@ -35,7 +35,7 @@ struct HomeView: View {
                 VStack(spacing: 30) {
                     // App Title
                     VStack(spacing: 10) {
-                        Text("♔")
+                        Text("♚")
                             .font(.system(size: 80))
                             .foregroundColor(.white)
 

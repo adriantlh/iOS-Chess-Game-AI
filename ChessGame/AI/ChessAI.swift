@@ -15,11 +15,14 @@ class ChessAI {
     }
 
     func getBestMove(board: ChessBoard) -> (from: Position, to: Position)? {
+        // Create a working copy of the board to avoid modifying the UI state
+        let workingBoard = board.copyBoard()
+        
         switch difficulty {
         case .easy:
-            return getRandomMove(board: board)
+            return getRandomMove(board: workingBoard)
         case .medium, .hard:
-            return getMinimaxMove(board: board, depth: difficulty.searchDepth)
+            return getMinimaxMove(board: workingBoard, depth: difficulty.searchDepth)
         }
     }
 
@@ -64,13 +67,15 @@ class ChessAI {
                 }
             }
         }
+        
+        // Shuffle moves to add some variety if scores are equal
+        allMoves.shuffle()
 
         // Evaluate each move
         for move in allMoves {
-            let simulatedBoard = board.copyBoard()
-
-            if let _ = simulatedBoard.makeMove(from: move.from, to: move.to) {
-                let score = -minimax(board: simulatedBoard, depth: depth - 1, alpha: Int.min, beta: Int.max, maximizing: false)
+            if let _ = board.makeMove(from: move.from, to: move.to) {
+                let score = -minimax(board: board, depth: depth - 1, alpha: Int.min, beta: Int.max, maximizing: false)
+                _ = board.undoLastMove()
 
                 if score > bestScore {
                     bestScore = score
@@ -89,7 +94,7 @@ class ChessAI {
         }
 
         if board.isCheckmate(color: board.currentTurn) {
-            return maximizing ? -10000 : 10000
+            return maximizing ? -1000000 : 1000000
         }
 
         if board.isStalemate(color: board.currentTurn) {
@@ -110,16 +115,20 @@ class ChessAI {
                 }
             }
         }
+        
+        if allMoves.isEmpty {
+            return evaluatePosition(board: board)
+        }
 
         if maximizing {
             var maxScore = Int.min
             var currentAlpha = alpha
 
             for move in allMoves {
-                let simulatedBoard = board.copyBoard()
-
-                if let _ = simulatedBoard.makeMove(from: move.from, to: move.to) {
-                    let score = minimax(board: simulatedBoard, depth: depth - 1, alpha: currentAlpha, beta: beta, maximizing: false)
+                if let _ = board.makeMove(from: move.from, to: move.to) {
+                    let score = minimax(board: board, depth: depth - 1, alpha: currentAlpha, beta: beta, maximizing: false)
+                    _ = board.undoLastMove()
+                    
                     maxScore = max(maxScore, score)
                     currentAlpha = max(currentAlpha, score)
 
@@ -135,10 +144,10 @@ class ChessAI {
             var currentBeta = beta
 
             for move in allMoves {
-                let simulatedBoard = board.copyBoard()
-
-                if let _ = simulatedBoard.makeMove(from: move.from, to: move.to) {
-                    let score = minimax(board: simulatedBoard, depth: depth - 1, alpha: alpha, beta: currentBeta, maximizing: true)
+                if let _ = board.makeMove(from: move.from, to: move.to) {
+                    let score = minimax(board: board, depth: depth - 1, alpha: alpha, beta: currentBeta, maximizing: true)
+                    _ = board.undoLastMove()
+                    
                     minScore = min(minScore, score)
                     currentBeta = min(currentBeta, score)
 
@@ -176,6 +185,7 @@ class ChessAI {
         }
 
         // Bonus for having more possible moves (mobility)
+        // Reduced weight: 1 point per move (1/100 of a pawn)
         var mobilityScore = 0
         for row in 0..<8 {
             for col in 0..<8 {
@@ -190,39 +200,41 @@ class ChessAI {
                 }
             }
         }
-        score += mobilityScore / 10
+        score += mobilityScore
 
         // Penalty for being in check
         if board.isInCheck(color: board.currentTurn) {
-            score -= 50
+            score -= 500 // Half a pawn penalty
         }
         if board.isInCheck(color: board.currentTurn.opposite) {
-            score += 50
+            score += 500
         }
 
         return score
     }
 
     private func getPositionalValue(piece: ChessPiece, position: Position) -> Int {
-        // Simple positional bonuses
+        // Simple positional bonuses (scaled to centipawns)
         let rowDistance = abs(Double(position.row) - 3.5)
         let colDistance = abs(Double(position.col) - 3.5)
-        let centerBonus = (3.0 - rowDistance + 3.0 - colDistance) / 10.0
+        // Center bonus: max (3.0 + 3.0) * 5 = 30 points
+        let centerBonus = Int((3.0 - rowDistance + 3.0 - colDistance) * 5.0)
 
         switch piece.type {
         case .pawn:
             // Pawns are more valuable as they advance
+            // 10 points per rank advanced
             let advancementBonus = piece.color == .white ? position.row : (7 - position.row)
-            return advancementBonus / 10
+            return advancementBonus * 10
         case .knight, .bishop:
             // Knights and bishops prefer center
-            return Int(centerBonus)
+            return centerBonus
         case .rook:
             // Rooks prefer open files (simplified)
             return 0
         case .queen:
             // Queen prefers center in middlegame
-            return Int(centerBonus / 2)
+            return centerBonus / 2
         case .king:
             // King should stay protected in early game
             return 0

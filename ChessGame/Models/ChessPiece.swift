@@ -26,23 +26,23 @@ enum PieceType: String, Codable {
 
     var value: Int {
         switch self {
-        case .pawn: return 1
-        case .knight: return 3
-        case .bishop: return 3
-        case .rook: return 5
-        case .queen: return 9
-        case .king: return 1000
+        case .pawn: return 100
+        case .knight: return 300
+        case .bishop: return 300
+        case .rook: return 500
+        case .queen: return 900
+        case .king: return 100000
         }
     }
 
     func symbol(for color: PieceColor) -> String {
         switch self {
-        case .pawn: return color == .white ? "♙" : "♟"
-        case .rook: return color == .white ? "♖" : "♜"
-        case .knight: return color == .white ? "♘" : "♞"
-        case .bishop: return color == .white ? "♗" : "♝"
-        case .queen: return color == .white ? "♕" : "♛"
-        case .king: return color == .white ? "♔" : "♚"
+        case .pawn: return "♟"
+        case .rook: return "♜"
+        case .knight: return "♞"
+        case .bishop: return "♝"
+        case .queen: return "♛"
+        case .king: return "♚"
         }
     }
 }

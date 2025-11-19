@@ -401,10 +401,14 @@ struct PuzzleBoardView: View {
         GeometryReader { geometry in
             let squareSize = min(geometry.size.width, geometry.size.height) / 8
 
+            let isBlack = viewModel.puzzle.sideToMove == .black
+            let rows = isBlack ? Array(0..<8) : Array((0..<8).reversed())
+            let cols = isBlack ? Array((0..<8).reversed()) : Array(0..<8)
+
             VStack(spacing: 0) {
-                ForEach((0..<8).reversed(), id: \.self) { row in
+                ForEach(rows, id: \.self) { row in
                     HStack(spacing: 0) {
-                        ForEach(0..<8, id: \.self) { col in
+                        ForEach(cols, id: \.self) { col in
                             PuzzleSquareView(
                                 row: row,
                                 col: col,
@@ -466,7 +470,7 @@ struct PuzzleSquareView: View {
             }
 
             if let piece = piece {
-                ChessPieceView(piece: piece)
+                ChessPieceView(piece: piece, size: squareSize)
             }
         }
         .frame(width: squareSize, height: squareSize)
