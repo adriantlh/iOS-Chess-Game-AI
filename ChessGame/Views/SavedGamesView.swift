@@ -46,35 +46,35 @@ struct SavedGamesView: View {
     var body: some View {
         NavigationView {
             ZStack {
-                Color(red: 0.15, green: 0.15, blue: 0.2)
+                AppColors.backgroundSecondary
                     .ignoresSafeArea()
 
                 if gamesManager.savedGames.isEmpty {
-                    VStack(spacing: 20) {
+                    VStack(spacing: Spacing.lg) {
                         Image(systemName: "tray")
-                            .font(.system(size: 60))
-                            .foregroundColor(.white.opacity(0.3))
+                            .font(.system(size: 56))
+                            .foregroundColor(AppColors.textDisabled)
 
                         Text("No Saved Games")
-                            .font(.system(size: 24, weight: .semibold))
-                            .foregroundColor(.white.opacity(0.7))
+                            .font(AppFonts.title())
+                            .foregroundColor(AppColors.textSecondary)
 
                         Text("Your completed games will appear here")
-                            .font(.system(size: 16))
-                            .foregroundColor(.white.opacity(0.5))
+                            .font(AppFonts.body())
+                            .foregroundColor(AppColors.textTertiary)
                             .multilineTextAlignment(.center)
                     }
-                    .padding()
+                    .padding(Spacing.xl)
                 } else {
                     ScrollView {
-                        VStack(spacing: 12) {
+                        VStack(spacing: Spacing.md) {
                             ForEach(gamesManager.savedGames) { game in
                                 SavedGameCard(game: game) {
                                     // Load game action
                                 }
                             }
                         }
-                        .padding()
+                        .padding(Spacing.lg)
                     }
                 }
             }
@@ -88,7 +88,7 @@ struct SavedGamesView: View {
                         Image(systemName: "chevron.left")
                         Text("Back")
                     }
-                    .foregroundColor(.white)
+                    .foregroundColor(AppColors.textPrimary)
                 }
             )
         }
@@ -102,53 +102,54 @@ struct SavedGameCard: View {
 
     var body: some View {
         Button(action: action) {
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: Spacing.md) {
                 HStack {
-                    VStack(alignment: .leading, spacing: 4) {
+                    VStack(alignment: .leading, spacing: Spacing.xs) {
                         Text(game.displayTitle)
-                            .font(.system(size: 18, weight: .semibold))
-                            .foregroundColor(.white)
+                            .font(AppFonts.headline())
+                            .foregroundColor(AppColors.textPrimary)
 
                         Text(game.displayDate)
-                            .font(.system(size: 14))
-                            .foregroundColor(.white.opacity(0.7))
+                            .font(AppFonts.caption())
+                            .foregroundColor(AppColors.textSecondary)
                     }
 
                     Spacer()
 
                     Text(game.result.rawValue)
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
+                        .font(AppFonts.caption())
+                        .fontWeight(.medium)
+                        .foregroundColor(AppColors.textPrimary)
+                        .padding(.horizontal, Spacing.md)
+                        .padding(.vertical, Spacing.sm)
                         .background(resultColor(game.result))
-                        .cornerRadius(8)
+                        .cornerRadius(Radii.sm)
                 }
 
                 HStack {
                     Label("\(game.moves.count) moves", systemImage: "arrow.right")
-                        .font(.system(size: 12))
-                        .foregroundColor(.white.opacity(0.6))
+                        .font(AppFonts.caption(12))
+                        .foregroundColor(AppColors.textTertiary)
 
                     if let timeControl = game.timeControl {
                         Label(timeControl.displayName, systemImage: "clock")
-                            .font(.system(size: 12))
-                            .foregroundColor(.white.opacity(0.6))
+                            .font(AppFonts.caption(12))
+                            .foregroundColor(AppColors.textTertiary)
                     }
                 }
             }
-            .padding()
-            .background(Color.white.opacity(0.1))
-            .cornerRadius(12)
+            .padding(Spacing.lg)
+            .background(AppColors.surface)
+            .cornerRadius(Radii.md)
         }
-        .buttonStyle(PlainButtonStyle())
+        .buttonStyle(ScaleButtonStyle())
     }
 
     func resultColor(_ result: GameResult) -> Color {
         switch result {
-        case .whiteWins, .blackWins: return .green
-        case .draw, .stalemate: return .orange
-        case .inProgress: return .blue
+        case .whiteWins, .blackWins: return AppColors.success
+        case .draw, .stalemate: return AppColors.warning
+        case .inProgress: return AppColors.info
         }
     }
 }

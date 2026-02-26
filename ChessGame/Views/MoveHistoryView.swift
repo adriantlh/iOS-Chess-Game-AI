@@ -34,15 +34,15 @@ struct MoveHistoryView: View {
                     moveRowsView
                 }
             }
-            .padding(.vertical, 8)
+            .padding(.vertical, Spacing.sm)
         }
-        .background(Color.black.opacity(0.3))
-        .cornerRadius(10)
+        .background(AppColors.backgroundPrimary.opacity(0.8))
+        .cornerRadius(Radii.md)
     }
 
     private var emptyStateView: some View {
         Text("No moves yet")
-            .foregroundColor(.white.opacity(0.5))
+            .foregroundColor(AppColors.textTertiary)
             .padding()
     }
 
@@ -90,20 +90,20 @@ struct MovePairRow: View {
         HStack(spacing: 0) {
             // Move number
             Text("\(moveNumber).")
-                .foregroundColor(.white.opacity(0.6))
+                .foregroundColor(AppColors.textTertiary)
                 .frame(width: 40, alignment: .trailing)
-                .font(.system(size: 14, weight: .semibold))
+                .font(AppFonts.caption())
 
             // White's move
             if let whiteMove = whiteMove {
                 Button(action: onWhiteTap) {
                     Text(whiteMove.notation)
-                        .foregroundColor(.white)
+                        .foregroundColor(AppColors.textPrimary)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 8)
-                        .background(isWhiteSelected ? Color.blue.opacity(0.4) : Color.clear)
-                        .font(.system(size: 14, weight: .medium, design: .monospaced))
+                        .padding(.horizontal, Spacing.md)
+                        .padding(.vertical, Spacing.sm)
+                        .background(isWhiteSelected ? AppColors.accent.opacity(0.3) : Color.clear)
+                        .font(AppFonts.mono(14))
                 }
             } else {
                 Spacer()
@@ -114,19 +114,19 @@ struct MovePairRow: View {
             if let blackMove = blackMove {
                 Button(action: onBlackTap) {
                     Text(blackMove.notation)
-                        .foregroundColor(.white)
+                        .foregroundColor(AppColors.textPrimary)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 8)
-                        .background(isBlackSelected ? Color.blue.opacity(0.4) : Color.clear)
-                        .font(.system(size: 14, weight: .medium, design: .monospaced))
+                        .padding(.horizontal, Spacing.md)
+                        .padding(.vertical, Spacing.sm)
+                        .background(isBlackSelected ? AppColors.accent.opacity(0.3) : Color.clear)
+                        .font(AppFonts.mono(14))
                 }
             } else {
                 Spacer()
                     .frame(maxWidth: .infinity)
             }
         }
-        .background(moveNumber % 2 == 0 ? Color.white.opacity(0.05) : Color.clear)
+        .background(moveNumber % 2 == 0 ? AppColors.rowAlternate : Color.clear)
     }
 }
 

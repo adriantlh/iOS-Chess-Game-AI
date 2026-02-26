@@ -43,7 +43,7 @@ struct ChessBoardView: View {
                                 showFileLabel: showCoordinates && rowIndex == rows.count - 1 ? files[col] : nil,
                                 isLightSquare: isLightSquare,
                                 onTap: {
-                                    withAnimation(.easeInOut(duration: 0.15)) {
+                                    withAnimation(AppAnimation.quick) {
                                         viewModel.handleSquareTap(row: row, col: col)
                                     }
                                 }
@@ -52,11 +52,12 @@ struct ChessBoardView: View {
                     }
                 }
             }
-            .clipShape(RoundedRectangle(cornerRadius: 4))
+            .clipShape(RoundedRectangle(cornerRadius: BoardStyle.cornerRadius))
             .overlay(
-                RoundedRectangle(cornerRadius: 4)
-                    .stroke(Color.black.opacity(0.5), lineWidth: 2)
+                RoundedRectangle(cornerRadius: BoardStyle.cornerRadius)
+                    .stroke(AppColors.boardBorder, lineWidth: BoardStyle.borderWidth)
             )
+            .shadow(color: .black.opacity(0.4), radius: 8, y: 4)
             .frame(width: squareSize * 8, height: squareSize * 8)
             .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
         }
@@ -79,31 +80,22 @@ struct SquareView: View {
     let onTap: () -> Void
 
     private var squareColor: Color {
-        isLightSquare
-            ? Color(red: 0.93, green: 0.85, blue: 0.72)
-            : Color(red: 0.71, green: 0.53, blue: 0.39)
+        isLightSquare ? AppColors.boardLight : AppColors.boardDark
     }
 
     private var coordinateColor: Color {
-        isLightSquare
-            ? Color(red: 0.71, green: 0.53, blue: 0.39)
-            : Color(red: 0.93, green: 0.85, blue: 0.72)
+        isLightSquare ? AppColors.boardDark : AppColors.boardLight
     }
 
     private var overlayColor: Color? {
         if isInCheck {
-            return Color.red.opacity(0.6)
+            return AppColors.checkHighlight
         } else if isSelected {
-            return Color(red: 0.3, green: 0.5, blue: 0.8).opacity(0.5)
+            return AppColors.selectedSquare
         } else if isLastMove {
-            return Color(red: 0.8, green: 0.75, blue: 0.2).opacity(0.4)
+            return AppColors.lastMoveHighlight
         } else if isThreatened {
-            return Color.orange.opacity(0.45)
-        } else if isPossibleMove && piece != nil {
-            // Capture indicator - handled separately below
-            return nil
-        } else if isPossibleMove {
-            return nil
+            return AppColors.threatenedSquare
         }
         return nil
     }
@@ -118,17 +110,22 @@ struct SquareView: View {
                     .fill(overlay)
             }
 
-            // Move indicators
+            // Move indicators — empty square: centered dot
             if isPossibleMove && piece == nil {
                 Circle()
-                    .fill(Color.black.opacity(0.2))
-                    .frame(width: squareSize * 0.3, height: squareSize * 0.3)
+                    .fill(AppColors.moveIndicator)
+                    .frame(width: squareSize * BoardStyle.moveIndicatorRatio,
+                           height: squareSize * BoardStyle.moveIndicatorRatio)
                     .frame(width: squareSize, height: squareSize)
             }
 
+            // Capture indicator — ring around the square edge (Lichess-style)
             if isPossibleMove && piece != nil {
-                // Capture indicator: corner triangles
-                CaptureIndicator(size: squareSize)
+                Circle()
+                    .stroke(AppColors.captureIndicator, lineWidth: BoardStyle.captureRingWidth)
+                    .frame(width: squareSize * BoardStyle.captureRingRatio,
+                           height: squareSize * BoardStyle.captureRingRatio)
+                    .frame(width: squareSize, height: squareSize)
             }
 
             // Piece
@@ -140,14 +137,14 @@ struct SquareView: View {
             // Board coordinates
             if let rank = showRankLabel {
                 Text(rank)
-                    .font(.system(size: squareSize * 0.18, weight: .bold))
+                    .font(.system(size: squareSize * BoardStyle.coordinateFontRatio, weight: .bold))
                     .foregroundColor(coordinateColor)
                     .padding(squareSize * 0.05)
             }
 
             if let file = showFileLabel {
                 Text(file)
-                    .font(.system(size: squareSize * 0.18, weight: .bold))
+                    .font(.system(size: squareSize * BoardStyle.coordinateFontRatio, weight: .bold))
                     .foregroundColor(coordinateColor)
                     .frame(width: squareSize, height: squareSize, alignment: .bottomTrailing)
                     .padding(squareSize * 0.05)
@@ -157,37 +154,5 @@ struct SquareView: View {
         .onTapGesture {
             onTap()
         }
-    }
-}
-
-struct CaptureIndicator: View {
-    let size: CGFloat
-
-    var body: some View {
-        ZStack {
-            // Four corner triangles to indicate capture
-            ForEach(0..<4, id: \.self) { corner in
-                Triangle()
-                    .fill(Color.red.opacity(0.5))
-                    .frame(width: size * 0.22, height: size * 0.22)
-                    .rotationEffect(.degrees(Double(corner) * 90))
-                    .offset(
-                        x: corner == 0 || corner == 3 ? -size * 0.39 : size * 0.39,
-                        y: corner == 0 || corner == 1 ? -size * 0.39 : size * 0.39
-                    )
-            }
-        }
-        .frame(width: size, height: size)
-    }
-}
-
-struct Triangle: Shape {
-    func path(in rect: CGRect) -> Path {
-        var path = Path()
-        path.move(to: CGPoint(x: rect.minX, y: rect.minY))
-        path.addLine(to: CGPoint(x: rect.maxX, y: rect.minY))
-        path.addLine(to: CGPoint(x: rect.minX, y: rect.maxY))
-        path.closeSubpath()
-        return path
     }
 }

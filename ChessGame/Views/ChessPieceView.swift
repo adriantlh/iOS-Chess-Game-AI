@@ -13,10 +13,8 @@ struct ChessPieceView: View {
 
     var body: some View {
         Text(piece.displaySymbol)
-            .font(.system(size: size * 0.78))
-            .foregroundColor(piece.color == .white
-                ? Color(red: 0.98, green: 0.98, blue: 0.95)
-                : Color(red: 0.12, green: 0.12, blue: 0.12))
+            .font(.system(size: size * BoardStyle.pieceScale))
+            .foregroundColor(piece.color == .white ? AppColors.whitePiece : AppColors.blackPiece)
             .shadow(color: piece.color == .white
                 ? .black.opacity(0.6) : .white.opacity(0.3),
                 radius: 1.5, x: 0, y: 1)

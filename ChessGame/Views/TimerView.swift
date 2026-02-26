@@ -32,11 +32,11 @@ struct TimerView: View {
         HStack(spacing: 12) {
             // Color indicator
             Circle()
-                .fill(playerColor == .white ? Color.white : Color.black)
+                .fill(playerColor == .white ? AppColors.whitePiece : AppColors.blackPiece)
                 .frame(width: 12, height: 12)
                 .overlay(
                     Circle()
-                        .stroke(Color.gray, lineWidth: 1)
+                        .stroke(AppColors.textDisabled, lineWidth: 1)
                 )
 
             // Time display
@@ -48,7 +48,7 @@ struct TimerView: View {
             // Active indicator
             if isActive && timer.isRunning {
                 Circle()
-                    .fill(Color.green)
+                    .fill(AppColors.success)
                     .frame(width: 8, height: 8)
                     .transition(.scale)
             }
@@ -59,7 +59,7 @@ struct TimerView: View {
         .cornerRadius(12)
         .overlay(
             RoundedRectangle(cornerRadius: 12)
-                .stroke(isActive ? Color.blue : Color.clear, lineWidth: 2)
+                .stroke(isActive ? AppColors.accent : Color.clear, lineWidth: 2)
         )
         .animation(.easeInOut, value: isActive)
     }
@@ -76,9 +76,9 @@ struct TimerView: View {
 
     private var backgroundColor: Color {
         if isActive {
-            return Color.blue.opacity(0.2)
+            return AppColors.accent.opacity(0.2)
         } else {
-            return Color.white.opacity(0.1)
+            return AppColors.surface
         }
     }
 }

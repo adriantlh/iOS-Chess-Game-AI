@@ -23,35 +23,35 @@ struct PuzzleMenuView: View {
     var body: some View {
         NavigationView {
             ZStack {
-                Color(red: 0.15, green: 0.15, blue: 0.2)
+                AppColors.backgroundSecondary
                     .ignoresSafeArea()
 
                 ScrollView {
-                    VStack(spacing: 20) {
+                    VStack(spacing: Spacing.lg) {
                         // Header
-                        VStack(spacing: 10) {
+                        VStack(spacing: Spacing.sm) {
                             Text("♟")
-                                .font(.system(size: 60))
-                                .foregroundColor(.white)
+                                .font(.system(size: 56))
+                                .foregroundColor(AppColors.textPrimary)
 
                             Text("Chess Puzzles")
-                                .font(.system(size: 32, weight: .bold))
-                                .foregroundColor(.white)
+                                .font(AppFonts.display())
+                                .foregroundColor(AppColors.textPrimary)
 
                             Text("Train your tactical skills")
-                                .font(.system(size: 16))
-                                .foregroundColor(.white.opacity(0.7))
+                                .font(AppFonts.body())
+                                .foregroundColor(AppColors.textSecondary)
                         }
-                        .padding(.top, 20)
+                        .padding(.top, Spacing.lg)
 
                         // Difficulty Filter
-                        VStack(alignment: .leading, spacing: 12) {
+                        VStack(alignment: .leading, spacing: Spacing.md) {
                             Text("Filter by Difficulty")
-                                .font(.system(size: 18, weight: .semibold))
-                                .foregroundColor(.white)
+                                .font(AppFonts.headline())
+                                .foregroundColor(AppColors.textPrimary)
 
                             ScrollView(.horizontal, showsIndicators: false) {
-                                HStack(spacing: 12) {
+                                HStack(spacing: Spacing.md) {
                                     DifficultyFilterButton(
                                         title: "All",
                                         isSelected: selectedDifficulty == nil
@@ -68,12 +68,12 @@ struct PuzzleMenuView: View {
                                         }
                                     }
                                 }
-                                .padding(.horizontal)
+                                .padding(.horizontal, Spacing.lg)
                             }
                         }
 
                         // Puzzles List
-                        VStack(spacing: 12) {
+                        VStack(spacing: Spacing.md) {
                             ForEach(filteredPuzzles) { puzzle in
                                 PuzzleCard(puzzle: puzzle) {
                                     selectedPuzzle = puzzle
@@ -81,9 +81,9 @@ struct PuzzleMenuView: View {
                                 }
                             }
                         }
-                        .padding(.horizontal)
+                        .padding(.horizontal, Spacing.lg)
                     }
-                    .padding(.bottom, 20)
+                    .padding(.bottom, Spacing.lg)
                 }
             }
             .navigationBarItems(
@@ -94,7 +94,7 @@ struct PuzzleMenuView: View {
                         Image(systemName: "chevron.left")
                         Text("Back")
                     }
-                    .foregroundColor(.white)
+                    .foregroundColor(AppColors.textPrimary)
                 }
             )
             .navigationBarTitleDisplayMode(.inline)
@@ -118,13 +118,15 @@ struct DifficultyFilterButton: View {
     var body: some View {
         Button(action: action) {
             Text(title)
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundColor(isSelected ? .white : .white.opacity(0.7))
-                .padding(.horizontal, 16)
-                .padding(.vertical, 8)
-                .background(isSelected ? Color.blue : Color.white.opacity(0.1))
-                .cornerRadius(20)
+                .font(AppFonts.caption())
+                .fontWeight(.semibold)
+                .foregroundColor(isSelected ? AppColors.textPrimary : AppColors.textSecondary)
+                .padding(.horizontal, Spacing.lg)
+                .padding(.vertical, Spacing.sm)
+                .background(isSelected ? AppColors.accent : AppColors.surface)
+                .cornerRadius(Radii.xl)
         }
+        .buttonStyle(ScaleButtonStyle())
     }
 }
 
@@ -134,82 +136,85 @@ struct PuzzleCard: View {
 
     var body: some View {
         Button(action: action) {
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: Spacing.md) {
                 HStack {
                     // Theme icon
                     Image(systemName: puzzle.theme.icon)
-                        .font(.system(size: 24))
-                        .foregroundColor(.blue)
+                        .font(.system(size: 22))
+                        .foregroundColor(AppColors.accent)
                         .frame(width: 40, height: 40)
-                        .background(Color.blue.opacity(0.2))
-                        .cornerRadius(10)
+                        .background(AppColors.accent.opacity(0.15))
+                        .cornerRadius(Radii.md)
 
-                    VStack(alignment: .leading, spacing: 4) {
+                    VStack(alignment: .leading, spacing: Spacing.xs) {
                         Text(puzzle.title)
-                            .font(.system(size: 18, weight: .semibold))
-                            .foregroundColor(.white)
+                            .font(AppFonts.headline())
+                            .foregroundColor(AppColors.textPrimary)
 
-                        HStack(spacing: 12) {
+                        HStack(spacing: Spacing.sm) {
                             // Theme badge
-                            HStack(spacing: 4) {
+                            HStack(spacing: Spacing.xs) {
                                 Image(systemName: puzzle.theme.icon)
                                     .font(.system(size: 10))
                                 Text(puzzle.theme.rawValue)
-                                    .font(.system(size: 12))
+                                    .font(AppFonts.caption(12))
                             }
-                            .foregroundColor(.white.opacity(0.8))
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                            .background(Color.blue.opacity(0.3))
-                            .cornerRadius(6)
+                            .foregroundColor(AppColors.textSecondary)
+                            .padding(.horizontal, Spacing.sm)
+                            .padding(.vertical, Spacing.xs)
+                            .background(AppColors.accent.opacity(0.2))
+                            .cornerRadius(Radii.sm)
 
                             // Difficulty badge
                             Text(puzzle.difficulty.rawValue)
-                                .font(.system(size: 12, weight: .medium))
-                                .foregroundColor(.white)
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 4)
+                                .font(AppFonts.caption(12))
+                                .fontWeight(.medium)
+                                .foregroundColor(AppColors.textPrimary)
+                                .padding(.horizontal, Spacing.sm)
+                                .padding(.vertical, Spacing.xs)
                                 .background(difficultyColor(puzzle.difficulty))
-                                .cornerRadius(6)
+                                .cornerRadius(Radii.sm)
                         }
                     }
 
                     Spacer()
 
                     Image(systemName: "chevron.right")
-                        .foregroundColor(.white.opacity(0.5))
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(AppColors.textTertiary)
                 }
 
                 Text(puzzle.description)
-                    .font(.system(size: 14))
-                    .foregroundColor(.white.opacity(0.7))
+                    .font(AppFonts.caption())
+                    .foregroundColor(AppColors.textSecondary)
                     .lineLimit(2)
 
                 HStack {
                     Label("\(puzzle.solution.count) moves", systemImage: "arrow.right")
-                        .font(.system(size: 12))
-                        .foregroundColor(.white.opacity(0.6))
+                        .font(AppFonts.caption(12))
+                        .foregroundColor(AppColors.textTertiary)
 
                     Spacer()
 
                     Text(puzzle.sideToMove.rawValue.capitalized + " to move")
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundColor(.white.opacity(0.8))
+                        .font(AppFonts.caption(12))
+                        .fontWeight(.medium)
+                        .foregroundColor(AppColors.textSecondary)
                 }
             }
-            .padding()
-            .background(Color.white.opacity(0.1))
-            .cornerRadius(15)
+            .padding(Spacing.lg)
+            .background(AppColors.surface)
+            .cornerRadius(Radii.lg)
         }
-        .buttonStyle(PlainButtonStyle())
+        .buttonStyle(ScaleButtonStyle())
     }
 
     func difficultyColor(_ difficulty: PuzzleDifficulty) -> Color {
         switch difficulty {
-        case .beginner: return .green
-        case .intermediate: return .blue
-        case .advanced: return .orange
-        case .expert: return .red
+        case .beginner: return AppColors.success
+        case .intermediate: return AppColors.info
+        case .advanced: return AppColors.warning
+        case .expert: return AppColors.error
         }
     }
 }
