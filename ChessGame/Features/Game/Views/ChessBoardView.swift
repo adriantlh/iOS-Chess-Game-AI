@@ -96,16 +96,12 @@ struct ChessBoardView: View {
                 // Dragged piece overlay
                 if viewModel.isDragging, let dragFrom = viewModel.dragFromPosition,
                    let piece = viewModel.board.pieceAt(dragFrom) {
-                    let originX: CGFloat
-                    let originY: CGFloat
-
-                    if isBlack {
-                        originX = CGFloat(7 - dragFrom.col) * squareSize + squareSize / 2
-                        originY = CGFloat(dragFrom.row) * squareSize + squareSize / 2
-                    } else {
-                        originX = CGFloat(dragFrom.col) * squareSize + squareSize / 2
-                        originY = CGFloat(7 - dragFrom.row) * squareSize + squareSize / 2
-                    }
+                    let originX = isBlack
+                        ? CGFloat(7 - dragFrom.col) * squareSize + squareSize / 2
+                        : CGFloat(dragFrom.col) * squareSize + squareSize / 2
+                    let originY = isBlack
+                        ? CGFloat(dragFrom.row) * squareSize + squareSize / 2
+                        : CGFloat(7 - dragFrom.row) * squareSize + squareSize / 2
 
                     ChessPieceView(piece: piece, size: squareSize, pieceStyle: pieceStyle)
                         .position(
