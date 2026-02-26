@@ -123,6 +123,69 @@ enum BoardStyle {
     static let cornerRadius: CGFloat = 5
 }
 
+// MARK: - Board Themes
+
+enum BoardThemeType: String, CaseIterable, Codable {
+    case classic = "Classic"
+    case blue = "Blue"
+    case green = "Green"
+    case purple = "Purple"
+    case marble = "Marble"
+
+    var lightSquare: Color {
+        switch self {
+        case .classic: return Color(red: 0.93, green: 0.85, blue: 0.72)
+        case .blue: return Color(red: 0.82, green: 0.87, blue: 0.95)
+        case .green: return Color(red: 0.87, green: 0.93, blue: 0.84)
+        case .purple: return Color(red: 0.88, green: 0.83, blue: 0.95)
+        case .marble: return Color(red: 0.92, green: 0.91, blue: 0.89)
+        }
+    }
+
+    var darkSquare: Color {
+        switch self {
+        case .classic: return Color(red: 0.71, green: 0.53, blue: 0.39)
+        case .blue: return Color(red: 0.42, green: 0.55, blue: 0.72)
+        case .green: return Color(red: 0.45, green: 0.63, blue: 0.42)
+        case .purple: return Color(red: 0.55, green: 0.4, blue: 0.68)
+        case .marble: return Color(red: 0.55, green: 0.54, blue: 0.52)
+        }
+    }
+}
+
+// MARK: - Piece Style
+
+enum PieceStyle: String, CaseIterable, Codable {
+    case standard = "Standard"
+    case filled = "Filled"
+    case outlined = "Outlined"
+
+    func symbol(type: PieceType, color: PieceColor) -> String {
+        switch self {
+        case .standard:
+            return type.symbol(for: color)
+        case .filled:
+            switch type {
+            case .king: return color == .white ? "♔" : "♚"
+            case .queen: return color == .white ? "♕" : "♛"
+            case .rook: return color == .white ? "♖" : "♜"
+            case .bishop: return color == .white ? "♗" : "♝"
+            case .knight: return color == .white ? "♘" : "♞"
+            case .pawn: return color == .white ? "♙" : "♟"
+            }
+        case .outlined:
+            switch type {
+            case .king: return "♔"
+            case .queen: return "♕"
+            case .rook: return "♖"
+            case .bishop: return "♗"
+            case .knight: return "♘"
+            case .pawn: return "♙"
+            }
+        }
+    }
+}
+
 // MARK: - Button Style
 
 struct ScaleButtonStyle: ButtonStyle {

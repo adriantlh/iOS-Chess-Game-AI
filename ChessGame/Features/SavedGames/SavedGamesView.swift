@@ -37,9 +37,19 @@ struct SavedGamesView: View {
                     ScrollView {
                         VStack(spacing: Spacing.md) {
                             ForEach(gamesManager.savedGames) { game in
-                                SavedGameCard(game: game) {
-                                    // Load game action
-                                }
+                                SavedGameCard(game: game,
+                                    onCopyPGN: {
+                                        let pgn = PGNExporter.export(
+                                            moves: game.moves,
+                                            result: game.result,
+                                            date: game.date
+                                        )
+                                        UIPasteboard.general.string = pgn
+                                    },
+                                    onDelete: {
+                                        gamesManager.deleteGame(game)
+                                    }
+                                )
                             }
                         }
                         .padding(Spacing.lg)
@@ -66,10 +76,13 @@ struct SavedGamesView: View {
 
 struct SavedGameCard: View {
     let game: GameRecord
-    let action: () -> Void
+    let onCopyPGN: () -> Void
+    let onDelete: () -> Void
+
+    @State private var showActions = false
 
     var body: some View {
-        Button(action: action) {
+        Button(action: { showActions = true }) {
             VStack(alignment: .leading, spacing: Spacing.md) {
                 HStack {
                     VStack(alignment: .leading, spacing: Spacing.xs) {
@@ -104,6 +117,12 @@ struct SavedGameCard: View {
                             .font(AppFonts.caption(12))
                             .foregroundColor(AppColors.textTertiary)
                     }
+
+                    if let opening = OpeningBook.identify(moves: game.moves) {
+                        Text(opening)
+                            .font(AppFonts.caption(11))
+                            .foregroundColor(AppColors.accent)
+                    }
                 }
             }
             .padding(Spacing.lg)
@@ -111,6 +130,11 @@ struct SavedGameCard: View {
             .cornerRadius(Radii.md)
         }
         .buttonStyle(ScaleButtonStyle())
+        .confirmationDialog("Game Actions", isPresented: $showActions) {
+            Button("Copy PGN") { onCopyPGN() }
+            Button("Delete", role: .destructive) { onDelete() }
+            Button("Cancel", role: .cancel) {}
+        }
     }
 
     func resultColor(_ result: GameResult) -> Color {

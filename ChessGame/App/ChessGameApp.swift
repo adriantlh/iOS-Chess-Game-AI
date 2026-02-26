@@ -14,7 +14,9 @@ struct ChessGameApp: App {
             "soundEnabled": true,
             "vibrationEnabled": true,
             "showCoordinates": false,
-            "autoPromotionQueen": true
+            "autoPromotionQueen": true,
+            "boardTheme": BoardThemeType.classic.rawValue,
+            "pieceStyle": PieceStyle.standard.rawValue
         ])
     }
 

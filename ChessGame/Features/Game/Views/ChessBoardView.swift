@@ -2,7 +2,8 @@
 //  ChessBoardView.swift
 //  ChessGame
 //
-//  Visual representation of the chess board with coordinates and move indicators
+//  Visual representation of the chess board with coordinates, move indicators,
+//  drag-and-drop, and board theme support
 //
 
 import SwiftUI
@@ -10,9 +11,19 @@ import SwiftUI
 struct ChessBoardView: View {
     @ObservedObject var viewModel: ChessGameViewModel
     @AppStorage("showCoordinates") private var showCoordinates = false
+    @AppStorage("boardTheme") private var boardThemeRaw = BoardThemeType.classic.rawValue
+    @AppStorage("pieceStyle") private var pieceStyleRaw = PieceStyle.standard.rawValue
 
     private let files = ["a", "b", "c", "d", "e", "f", "g", "h"]
     private let ranks = ["1", "2", "3", "4", "5", "6", "7", "8"]
+
+    private var boardTheme: BoardThemeType {
+        BoardThemeType(rawValue: boardThemeRaw) ?? .classic
+    }
+
+    private var pieceStyle: PieceStyle {
+        PieceStyle(rawValue: pieceStyleRaw) ?? .standard
+    }
 
     var body: some View {
         GeometryReader { geometry in
@@ -22,34 +33,89 @@ struct ChessBoardView: View {
             let rows = isBlack ? Array(0..<8) : Array((0..<8).reversed())
             let cols = isBlack ? Array((0..<8).reversed()) : Array(0..<8)
 
-            VStack(spacing: 0) {
-                ForEach(Array(rows.enumerated()), id: \.offset) { rowIndex, row in
-                    HStack(spacing: 0) {
-                        ForEach(Array(cols.enumerated()), id: \.offset) { colIndex, col in
-                            let position = Position(row: row, col: col)
-                            let isLightSquare = (row + col) % 2 == 0
+            let displayBoard = viewModel.displayBoard
 
-                            SquareView(
-                                row: row,
-                                col: col,
-                                squareSize: squareSize,
-                                piece: viewModel.board.pieceAt(position),
-                                isSelected: viewModel.isSquareSelected(position),
-                                isPossibleMove: viewModel.isSquarePossibleMove(position),
-                                isThreatened: viewModel.isSquareThreatened(position),
-                                isInCheck: viewModel.isSquareInCheck(position),
-                                isLastMove: viewModel.isLastMoveSquare(position),
-                                showRankLabel: showCoordinates && colIndex == 0 ? ranks[row] : nil,
-                                showFileLabel: showCoordinates && rowIndex == rows.count - 1 ? files[col] : nil,
-                                isLightSquare: isLightSquare,
-                                onTap: {
-                                    withAnimation(AppAnimation.quick) {
-                                        viewModel.handleSquareTap(row: row, col: col)
+            ZStack {
+                // Board squares and indicators
+                VStack(spacing: 0) {
+                    ForEach(Array(rows.enumerated()), id: \.offset) { rowIndex, row in
+                        HStack(spacing: 0) {
+                            ForEach(Array(cols.enumerated()), id: \.offset) { colIndex, col in
+                                let position = Position(row: row, col: col)
+                                let isLightSquare = (row + col) % 2 == 0
+
+                                SquareView(
+                                    row: row,
+                                    col: col,
+                                    squareSize: squareSize,
+                                    piece: displayBoard.pieceAt(position),
+                                    isSelected: viewModel.isSquareSelected(position),
+                                    isPossibleMove: viewModel.isSquarePossibleMove(position),
+                                    isThreatened: viewModel.isSquareThreatened(position),
+                                    isInCheck: viewModel.isSquareInCheck(position),
+                                    isLastMove: viewModel.isLastMoveSquare(position),
+                                    isHint: viewModel.isHintSquare(position),
+                                    showRankLabel: showCoordinates && colIndex == 0 ? ranks[row] : nil,
+                                    showFileLabel: showCoordinates && rowIndex == rows.count - 1 ? files[col] : nil,
+                                    isLightSquare: isLightSquare,
+                                    boardTheme: boardTheme,
+                                    pieceStyle: pieceStyle,
+                                    isDragSource: viewModel.dragFromPosition == position && viewModel.isDragging,
+                                    onTap: {
+                                        withAnimation(AppAnimation.quick) {
+                                            viewModel.handleSquareTap(row: row, col: col)
+                                        }
                                     }
-                                }
-                            )
+                                )
+                                .gesture(
+                                    DragGesture(minimumDistance: 10)
+                                        .onChanged { value in
+                                            if !viewModel.isDragging {
+                                                viewModel.handleDragStart(row: row, col: col)
+                                            }
+                                            viewModel.dragOffset = value.translation
+                                        }
+                                        .onEnded { value in
+                                            let colOffset = isBlack
+                                                ? -Int(round(value.translation.width / squareSize))
+                                                : Int(round(value.translation.width / squareSize))
+                                            let rowOffset = isBlack
+                                                ? Int(round(value.translation.height / squareSize))
+                                                : -Int(round(value.translation.height / squareSize))
+
+                                            let targetRow = row + rowOffset
+                                            let targetCol = col + colOffset
+                                            viewModel.handleDragEnd(toRow: targetRow, toCol: targetCol)
+                                        }
+                                )
+                            }
                         }
                     }
+                }
+
+                // Dragged piece overlay
+                if viewModel.isDragging, let dragFrom = viewModel.dragFromPosition,
+                   let piece = viewModel.board.pieceAt(dragFrom) {
+                    let originX: CGFloat
+                    let originY: CGFloat
+
+                    if isBlack {
+                        originX = CGFloat(7 - dragFrom.col) * squareSize + squareSize / 2
+                        originY = CGFloat(dragFrom.row) * squareSize + squareSize / 2
+                    } else {
+                        originX = CGFloat(dragFrom.col) * squareSize + squareSize / 2
+                        originY = CGFloat(7 - dragFrom.row) * squareSize + squareSize / 2
+                    }
+
+                    ChessPieceView(piece: piece, size: squareSize, pieceStyle: pieceStyle)
+                        .position(
+                            x: originX + viewModel.dragOffset.width,
+                            y: originY + viewModel.dragOffset.height
+                        )
+                        .scaleEffect(1.2)
+                        .shadow(color: .black.opacity(0.4), radius: 6, y: 4)
+                        .zIndex(100)
+                        .allowsHitTesting(false)
                 }
             }
             .clipShape(RoundedRectangle(cornerRadius: BoardStyle.cornerRadius))
@@ -74,17 +140,21 @@ struct SquareView: View {
     let isThreatened: Bool
     let isInCheck: Bool
     let isLastMove: Bool
+    let isHint: Bool
     let showRankLabel: String?
     let showFileLabel: String?
     let isLightSquare: Bool
+    let boardTheme: BoardThemeType
+    let pieceStyle: PieceStyle
+    let isDragSource: Bool
     let onTap: () -> Void
 
     private var squareColor: Color {
-        isLightSquare ? AppColors.boardLight : AppColors.boardDark
+        isLightSquare ? boardTheme.lightSquare : boardTheme.darkSquare
     }
 
     private var coordinateColor: Color {
-        isLightSquare ? AppColors.boardDark : AppColors.boardLight
+        isLightSquare ? boardTheme.darkSquare : boardTheme.lightSquare
     }
 
     private var overlayColor: Color? {
@@ -92,6 +162,8 @@ struct SquareView: View {
             return AppColors.checkHighlight
         } else if isSelected {
             return AppColors.selectedSquare
+        } else if isHint {
+            return AppColors.success.opacity(0.4)
         } else if isLastMove {
             return AppColors.lastMoveHighlight
         } else if isThreatened {
@@ -128,9 +200,9 @@ struct SquareView: View {
                     .frame(width: squareSize, height: squareSize)
             }
 
-            // Piece
-            if let piece = piece {
-                ChessPieceView(piece: piece, size: squareSize)
+            // Piece (hidden when being dragged)
+            if let piece = piece, !isDragSource {
+                ChessPieceView(piece: piece, size: squareSize, pieceStyle: pieceStyle)
                     .frame(width: squareSize, height: squareSize)
             }
 
