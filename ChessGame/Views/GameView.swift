@@ -11,8 +11,6 @@ struct GameView: View {
     @StateObject private var viewModel: ChessGameViewModel
     @State private var timer: ChessTimer?
     @State private var showMoveHistory = false
-    @State private var showGameOverAlert = false
-    @State private var gameOverMessage = ""
 
     let gameMode: GameMode
     let aiDifficulty: AIDifficulty
@@ -212,7 +210,7 @@ struct GameView: View {
         .sheet(isPresented: $showMoveHistory) {
             MoveHistorySheet(moves: viewModel.board.moveHistory)
         }
-        .alert(gameOverMessage, isPresented: $showGameOverAlert) {
+        .alert(viewModel.gameOverMessage, isPresented: $viewModel.showGameOverAlert) {
             Button("New Game") {
                 viewModel.restartGame()
                 timer?.reset()
@@ -231,36 +229,53 @@ struct GameView: View {
         }
         .onChange(of: viewModel.board.moveHistory.count) { _ in
             timer?.switchTurn(to: viewModel.board.currentTurn)
-            checkGameStatus()
+        }
+        .onChange(of: viewModel.gameStatus) { status in
+            if status != .inProgress {
+                timer?.pause()
+            }
         }
         .onChange(of: timer?.hasTimeExpired) { expired in
             if expired == true, let losingColor = timer?.losingColor {
-                gameOverMessage = "\(losingColor.opposite.rawValue.capitalized) wins on time!"
-                showGameOverAlert = true
+                viewModel.gameOverMessage = "\(losingColor.opposite.rawValue.capitalized) wins on time!"
+                viewModel.showGameOverAlert = true
+            }
+        }
+        .onChange(of: viewModel.showGameOverAlert) { show in
+            if show {
+                saveCompletedGame()
             }
         }
     }
 
-    private func checkGameStatus() {
-        let currentColor = viewModel.board.currentTurn
-
-        if viewModel.board.isCheckmate(color: currentColor) {
-            gameOverMessage = "\(currentColor.opposite.rawValue.capitalized) wins by checkmate!"
-            showGameOverAlert = true
-            timer?.pause()
-        } else if viewModel.board.isStalemate(color: currentColor) {
-            gameOverMessage = "Game ended in stalemate!"
-            showGameOverAlert = true
-            timer?.pause()
-        } else if viewModel.board.isInsufficientMaterial() {
-            gameOverMessage = "Draw by insufficient material!"
-            showGameOverAlert = true
-            timer?.pause()
-        } else if viewModel.board.isDrawByFiftyMoveRule() {
-            gameOverMessage = "Draw by fifty-move rule!"
-            showGameOverAlert = true
-            timer?.pause()
+    private func saveCompletedGame() {
+        let result: GameResult
+        switch viewModel.gameStatus {
+        case .checkmate(let winner):
+            result = winner == .white ? .whiteWins : .blackWins
+        case .stalemate:
+            result = .stalemate
+        case .draw:
+            result = .draw
+        case .inProgress:
+            // Timer win case
+            if let losingColor = timer?.losingColor {
+                result = losingColor == .white ? .blackWins : .whiteWins
+            } else {
+                return
+            }
         }
+
+        let record = GameRecord(
+            gameMode: gameMode,
+            playerColor: gameMode == .playerVsAI ? playerColor : nil,
+            aiDifficulty: gameMode == .playerVsAI ? aiDifficulty : nil,
+            moves: viewModel.board.moveHistory,
+            result: result,
+            timeControl: timerEnabled ? timeControl : nil
+        )
+
+        SavedGamesManager().saveGame(record)
     }
 }
 

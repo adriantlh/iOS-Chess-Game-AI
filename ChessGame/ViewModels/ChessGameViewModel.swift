@@ -7,6 +7,7 @@
 
 import Foundation
 import SwiftUI
+import UIKit
 import Combine
 
 class ChessGameViewModel: ObservableObject {
@@ -138,8 +139,13 @@ class ChessGameViewModel: ObservableObject {
     }
 
     private func makeMove(from: Position, to: Position) {
-        // Check if this is a promotion move - show dialog for player choice
+        // Check if this is a promotion move
         if board.isPromotionMove(from: from, to: to) {
+            // Auto-promote to queen if setting is enabled
+            if UserDefaults.standard.bool(forKey: "autoPromotionQueen") {
+                executeMove(from: from, to: to, promotionType: .queen)
+                return
+            }
             pendingPromotionFrom = from
             pendingPromotionTo = to
             showPromotionDialog = true
@@ -296,11 +302,13 @@ class ChessGameViewModel: ObservableObject {
     // MARK: - Haptic Feedback
 
     private func triggerHaptic(_ style: UIImpactFeedbackGenerator.FeedbackStyle) {
+        guard UserDefaults.standard.bool(forKey: "vibrationEnabled") else { return }
         let generator = UIImpactFeedbackGenerator(style: style)
         generator.impactOccurred()
     }
 
     private func triggerNotification(_ type: UINotificationFeedbackGenerator.FeedbackType) {
+        guard UserDefaults.standard.bool(forKey: "vibrationEnabled") else { return }
         let generator = UINotificationFeedbackGenerator()
         generator.notificationOccurred(type)
     }

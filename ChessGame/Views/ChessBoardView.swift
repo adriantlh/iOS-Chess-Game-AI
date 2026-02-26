@@ -9,6 +9,7 @@ import SwiftUI
 
 struct ChessBoardView: View {
     @ObservedObject var viewModel: ChessGameViewModel
+    @AppStorage("showCoordinates") private var showCoordinates = false
 
     private let files = ["a", "b", "c", "d", "e", "f", "g", "h"]
     private let ranks = ["1", "2", "3", "4", "5", "6", "7", "8"]
@@ -38,8 +39,8 @@ struct ChessBoardView: View {
                                 isThreatened: viewModel.isSquareThreatened(position),
                                 isInCheck: viewModel.isSquareInCheck(position),
                                 isLastMove: viewModel.isLastMoveSquare(position),
-                                showRankLabel: colIndex == 0 ? ranks[row] : nil,
-                                showFileLabel: rowIndex == rows.count - 1 ? files[col] : nil,
+                                showRankLabel: showCoordinates && colIndex == 0 ? ranks[row] : nil,
+                                showFileLabel: showCoordinates && rowIndex == rows.count - 1 ? files[col] : nil,
                                 isLightSquare: isLightSquare,
                                 onTap: {
                                     withAnimation(.easeInOut(duration: 0.15)) {
