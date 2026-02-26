@@ -2,7 +2,7 @@
 //  GameView.swift
 //  ChessGame
 //
-//  Main game view with all features integrated
+//  Main game view with board, captured pieces, controls, and status
 //
 
 import SwiftUI
@@ -39,141 +39,176 @@ struct GameView: View {
         vm.gameState.playerColor = playerColor
         vm.gameState.assistedPlayEnabled = assistedPlayEnabled
         _viewModel = StateObject(wrappedValue: vm)
-
-        // Timer will be initialized in onAppear
         _timer = State(initialValue: nil)
+    }
+
+    private var topColor: PieceColor {
+        playerColor == .white ? .black : .white
+    }
+
+    private var bottomColor: PieceColor {
+        playerColor
     }
 
     var body: some View {
         ZStack {
-            Color(red: 0.2, green: 0.2, blue: 0.25)
+            Color(red: 0.15, green: 0.15, blue: 0.2)
                 .ignoresSafeArea()
 
-            VStack(spacing: 15) {
-                // Top Player Timer (opponent/black)
-                if timerEnabled, let timer = timer {
-                    TimerView(timer: timer, playerColor: .black)
-                        .padding(.horizontal)
-                }
+            VStack(spacing: 8) {
+                // Top player info
+                PlayerInfoBar(
+                    color: topColor,
+                    capturedPieces: topColor == .white ? viewModel.capturedByWhite : viewModel.capturedByBlack,
+                    materialAdvantage: topColor == .white ? max(0, viewModel.materialAdvantage) : max(0, -viewModel.materialAdvantage),
+                    isCurrentTurn: viewModel.board.currentTurn == topColor,
+                    timer: timerEnabled ? timer : nil
+                )
+                .padding(.horizontal)
 
                 // Chess Board
                 ChessBoardView(viewModel: viewModel)
                     .aspectRatio(1, contentMode: .fit)
-                    .padding(.horizontal)
+                    .padding(.horizontal, 8)
 
-                // Bottom Player Timer (current player/white)
-                if timerEnabled, let timer = timer {
-                    TimerView(timer: timer, playerColor: .white)
-                        .padding(.horizontal)
-                }
+                // Bottom player info
+                PlayerInfoBar(
+                    color: bottomColor,
+                    capturedPieces: bottomColor == .white ? viewModel.capturedByWhite : viewModel.capturedByBlack,
+                    materialAdvantage: bottomColor == .white ? max(0, viewModel.materialAdvantage) : max(0, -viewModel.materialAdvantage),
+                    isCurrentTurn: viewModel.board.currentTurn == bottomColor,
+                    timer: timerEnabled ? timer : nil
+                )
+                .padding(.horizontal)
 
-                // Move History Button
-                Button(action: {
-                    showMoveHistory.toggle()
-                }) {
-                    HStack {
-                        Image(systemName: "list.bullet")
-                        Text("Move History (\(viewModel.board.moveHistory.count))")
-                    }
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 8)
-                    .background(Color.blue.opacity(0.3))
-                    .cornerRadius(8)
+                // Check indicator
+                if viewModel.board.isInCheck(color: viewModel.board.currentTurn) {
+                    Text("CHECK")
+                        .font(.system(size: 14, weight: .heavy, design: .rounded))
+                        .foregroundColor(.red)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 4)
+                        .background(Color.red.opacity(0.15))
+                        .cornerRadius(6)
                 }
 
                 // Game Controls
-                HStack(spacing: 15) {
-                    Button(action: {
+                HStack(spacing: 10) {
+                    ControlButton(icon: "arrow.uturn.backward", label: "Undo",
+                                  color: viewModel.canUndo() ? .orange : .gray.opacity(0.5)) {
                         viewModel.undoMove()
-                    }) {
-                        VStack(spacing: 4) {
-                            Image(systemName: "arrow.uturn.backward")
-                                .font(.title3)
-                            Text("Undo")
-                                .font(.caption)
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
-                        .background(viewModel.canUndo() ? Color.orange : Color.gray)
-                        .foregroundColor(.white)
-                        .cornerRadius(10)
                     }
                     .disabled(!viewModel.canUndo())
 
-                    Button(action: {
+                    ControlButton(icon: "list.bullet", label: "Moves",
+                                  color: .blue.opacity(0.7)) {
+                        showMoveHistory.toggle()
+                    }
+
+                    ControlButton(icon: "arrow.clockwise", label: "New",
+                                  color: .red.opacity(0.8)) {
                         viewModel.restartGame()
                         timer?.reset()
                         timer?.start()
-                    }) {
-                        VStack(spacing: 4) {
-                            Image(systemName: "arrow.clockwise")
-                                .font(.title3)
-                            Text("Restart")
-                                .font(.caption)
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
-                        .background(Color.red)
-                        .foregroundColor(.white)
-                        .cornerRadius(10)
                     }
 
-                    Button(action: {
+                    ControlButton(
+                        icon: viewModel.gameState.assistedPlayEnabled ? "eye.fill" : "eye.slash",
+                        label: "Assist",
+                        color: viewModel.gameState.assistedPlayEnabled ? .green : .gray.opacity(0.5)
+                    ) {
                         viewModel.toggleAssistedPlay()
-                    }) {
-                        VStack(spacing: 4) {
-                            Image(systemName: viewModel.gameState.assistedPlayEnabled ? "eye.fill" : "eye.slash")
-                                .font(.title3)
-                            Text("Assist")
-                                .font(.caption)
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
-                        .background(viewModel.gameState.assistedPlayEnabled ? Color.green : Color.gray)
-                        .foregroundColor(.white)
-                        .cornerRadius(10)
                     }
 
-                    Button(action: {
+                    ControlButton(icon: "xmark", label: "Exit",
+                                  color: .gray.opacity(0.5)) {
                         onDismiss()
-                    }) {
-                        VStack(spacing: 4) {
-                            Image(systemName: "xmark")
-                                .font(.title3)
-                            Text("Exit")
-                                .font(.caption)
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
-                        .background(Color.gray.opacity(0.7))
-                        .foregroundColor(.white)
-                        .cornerRadius(10)
                     }
                 }
                 .padding(.horizontal)
 
-                // Status
-                statusView
-                    .padding(.horizontal)
+                // Game info
+                HStack(spacing: 8) {
+                    Text(gameMode.rawValue)
+                        .font(.system(size: 12))
+                        .foregroundColor(.white.opacity(0.5))
+
+                    if gameMode == .playerVsAI {
+                        Text("·")
+                            .foregroundColor(.white.opacity(0.3))
+                        Text(aiDifficulty.rawValue)
+                            .font(.system(size: 12))
+                            .foregroundColor(.white.opacity(0.5))
+                    }
+
+                    Text("·")
+                        .foregroundColor(.white.opacity(0.3))
+                    Text("Move \(viewModel.board.moveHistory.count)")
+                        .font(.system(size: 12))
+                        .foregroundColor(.white.opacity(0.5))
+                }
+                .padding(.bottom, 4)
+            }
+
+            // Promotion Dialog Overlay
+            if viewModel.showPromotionDialog {
+                Color.black.opacity(0.5)
+                    .ignoresSafeArea()
+
+                VStack(spacing: 16) {
+                    Text("Promote Pawn")
+                        .font(.system(size: 18, weight: .bold))
+                        .foregroundColor(.white)
+
+                    HStack(spacing: 16) {
+                        ForEach([PieceType.queen, .rook, .bishop, .knight], id: \.self) { type in
+                            Button(action: {
+                                viewModel.completePromotion(pieceType: type)
+                            }) {
+                                VStack(spacing: 4) {
+                                    Text(type.symbol(for: viewModel.board.currentTurn))
+                                        .font(.system(size: 40))
+                                        .foregroundColor(viewModel.board.currentTurn == .white
+                                            ? Color(red: 0.98, green: 0.98, blue: 0.95)
+                                            : Color(red: 0.12, green: 0.12, blue: 0.12))
+                                        .shadow(color: .black.opacity(0.5), radius: 2)
+                                    Text(type.rawValue.capitalized)
+                                        .font(.system(size: 11, weight: .medium))
+                                        .foregroundColor(.white.opacity(0.8))
+                                }
+                                .frame(width: 70, height: 70)
+                                .background(Color.white.opacity(0.15))
+                                .cornerRadius(12)
+                            }
+                        }
+                    }
+                }
+                .padding(24)
+                .background(Color(red: 0.18, green: 0.18, blue: 0.24))
+                .cornerRadius(20)
+                .shadow(radius: 20)
             }
 
             // AI Thinking Overlay
             if viewModel.gameState.isAIThinking {
-                Color.black.opacity(0.4)
+                Color.black.opacity(0.3)
                     .ignoresSafeArea()
 
-                VStack {
+                VStack(spacing: 12) {
                     ProgressView()
-                        .scaleEffect(1.5)
+                        .scaleEffect(1.2)
                         .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                    Text("AI is thinking...")
-                        .foregroundColor(.white)
-                        .font(.headline)
-                        .padding(.top)
+                    Text("Thinking...")
+                        .foregroundColor(.white.opacity(0.9))
+                        .font(.system(size: 14, weight: .medium))
                 }
+                .padding(24)
+                .background(Color.black.opacity(0.7))
+                .cornerRadius(16)
             }
         }
+        .animation(.easeInOut(duration: 0.2), value: viewModel.showPromotionDialog)
+        .animation(.easeInOut(duration: 0.15), value: viewModel.gameState.isAIThinking)
         .sheet(isPresented: $showMoveHistory) {
             MoveHistorySheet(moves: viewModel.board.moveHistory)
         }
@@ -195,10 +230,7 @@ struct GameView: View {
             }
         }
         .onChange(of: viewModel.board.moveHistory.count) { _ in
-            // Update timer turn
             timer?.switchTurn(to: viewModel.board.currentTurn)
-
-            // Check game status
             checkGameStatus()
         }
         .onChange(of: timer?.hasTimeExpired) { expired in
@@ -207,46 +239,6 @@ struct GameView: View {
                 showGameOverAlert = true
             }
         }
-    }
-
-    private var statusView: some View {
-        VStack(spacing: 8) {
-            HStack {
-                Text("Turn:")
-                    .foregroundColor(.white)
-                Text(viewModel.board.currentTurn.rawValue.capitalized)
-                    .fontWeight(.bold)
-                    .foregroundColor(viewModel.board.currentTurn == .white ? .white : .black)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .background(viewModel.board.currentTurn == .white ? Color.gray.opacity(0.8) : Color.white.opacity(0.9))
-                    .cornerRadius(8)
-            }
-
-            if viewModel.board.isInCheck(color: viewModel.board.currentTurn) {
-                Text("Check!")
-                    .foregroundColor(.red)
-                    .fontWeight(.bold)
-                    .font(.headline)
-            }
-
-            HStack {
-                Text(gameMode.rawValue)
-                    .font(.caption)
-                    .foregroundColor(.white.opacity(0.8))
-
-                if gameMode == .playerVsAI {
-                    Text("•")
-                        .foregroundColor(.white.opacity(0.5))
-                    Text(aiDifficulty.rawValue)
-                        .font(.caption)
-                        .foregroundColor(.white.opacity(0.8))
-                }
-            }
-        }
-        .padding()
-        .background(Color.black.opacity(0.3))
-        .cornerRadius(10)
     }
 
     private func checkGameStatus() {
@@ -260,9 +252,123 @@ struct GameView: View {
             gameOverMessage = "Game ended in stalemate!"
             showGameOverAlert = true
             timer?.pause()
+        } else if viewModel.board.isInsufficientMaterial() {
+            gameOverMessage = "Draw by insufficient material!"
+            showGameOverAlert = true
+            timer?.pause()
+        } else if viewModel.board.isDrawByFiftyMoveRule() {
+            gameOverMessage = "Draw by fifty-move rule!"
+            showGameOverAlert = true
+            timer?.pause()
         }
     }
 }
+
+// MARK: - Player Info Bar
+
+struct PlayerInfoBar: View {
+    let color: PieceColor
+    let capturedPieces: [ChessPiece]
+    let materialAdvantage: Int
+    let isCurrentTurn: Bool
+    let timer: ChessTimer?
+
+    var body: some View {
+        HStack(spacing: 8) {
+            // Turn indicator
+            Circle()
+                .fill(color == .white ? Color.white : Color(red: 0.2, green: 0.2, blue: 0.2))
+                .frame(width: 14, height: 14)
+                .overlay(
+                    Circle().stroke(Color.gray.opacity(0.5), lineWidth: 1)
+                )
+                .overlay(
+                    Circle()
+                        .fill(Color.green)
+                        .frame(width: 6, height: 6)
+                        .opacity(isCurrentTurn ? 1 : 0)
+                )
+
+            // Captured pieces
+            CapturedPiecesView(pieces: capturedPieces, materialAdvantage: materialAdvantage)
+
+            Spacer()
+
+            // Timer
+            if let timer = timer {
+                Text(timer.formattedTime(for: color))
+                    .font(.system(size: 18, weight: .bold, design: .monospaced))
+                    .foregroundColor(timerColor(timer: timer, color: color))
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 4)
+                    .background(isCurrentTurn ? Color.white.opacity(0.1) : Color.clear)
+                    .cornerRadius(6)
+            }
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 6)
+        .background(isCurrentTurn ? Color.white.opacity(0.08) : Color.clear)
+        .cornerRadius(8)
+    }
+
+    private func timerColor(timer: ChessTimer, color: PieceColor) -> Color {
+        let time = color == .white ? timer.whiteTimeRemaining : timer.blackTimeRemaining
+        if time < 10 { return .red }
+        if time < 30 { return .orange }
+        return .white
+    }
+}
+
+// MARK: - Captured Pieces View
+
+struct CapturedPiecesView: View {
+    let pieces: [ChessPiece]
+    let materialAdvantage: Int
+
+    var body: some View {
+        HStack(spacing: -2) {
+            ForEach(Array(pieces.enumerated()), id: \.offset) { _, piece in
+                Text(piece.displaySymbol)
+                    .font(.system(size: 14))
+                    .foregroundColor(piece.color == .white ? .white.opacity(0.8) : .gray)
+            }
+
+            if materialAdvantage > 0 {
+                Text("+\(materialAdvantage / 100)")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundColor(.white.opacity(0.6))
+                    .padding(.leading, 4)
+            }
+        }
+    }
+}
+
+// MARK: - Control Button
+
+struct ControlButton: View {
+    let icon: String
+    let label: String
+    let color: Color
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: 3) {
+                Image(systemName: icon)
+                    .font(.system(size: 16))
+                Text(label)
+                    .font(.system(size: 10))
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 10)
+            .background(color)
+            .foregroundColor(.white)
+            .cornerRadius(8)
+        }
+    }
+}
+
+// MARK: - Move History Sheet
 
 struct MoveHistorySheet: View {
     @Environment(\.presentationMode) var presentationMode
@@ -271,7 +377,7 @@ struct MoveHistorySheet: View {
     var body: some View {
         NavigationView {
             ZStack {
-                Color(red: 0.2, green: 0.2, blue: 0.25)
+                Color(red: 0.15, green: 0.15, blue: 0.2)
                     .ignoresSafeArea()
 
                 MoveHistoryView(moves: moves, currentMoveIndex: nil, onMoveSelected: nil)

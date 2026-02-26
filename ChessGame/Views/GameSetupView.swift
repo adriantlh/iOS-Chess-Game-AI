@@ -20,7 +20,7 @@ struct GameSetupView: View {
     var body: some View {
         NavigationView {
             ZStack {
-                Color(red: 0.2, green: 0.2, blue: 0.25)
+                Color(red: 0.15, green: 0.15, blue: 0.2)
                     .ignoresSafeArea()
 
                 ScrollView {
