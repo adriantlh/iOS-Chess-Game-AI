@@ -6,10 +6,10 @@
 //
 
 import SwiftUI
+import UIKit
 
 struct GameView: View {
     @StateObject private var viewModel: ChessGameViewModel
-    @State private var timer: ChessTimer?
     @State private var showMoveHistory = false
     @State private var showShareSheet = false
     @State private var showAnalysis = false
@@ -41,7 +41,6 @@ struct GameView: View {
         vm.gameState.playerColor = playerColor
         vm.gameState.assistedPlayEnabled = assistedPlayEnabled
         _viewModel = StateObject(wrappedValue: vm)
-        _timer = State(initialValue: nil)
     }
 
     private var topColor: PieceColor {
@@ -65,7 +64,7 @@ struct GameView: View {
                     capturedPieces: topColor == .white ? viewModel.capturedByWhite : viewModel.capturedByBlack,
                     materialAdvantage: topColor == .white ? max(0, viewModel.materialAdvantage) : max(0, -viewModel.materialAdvantage),
                     isCurrentTurn: viewModel.board.currentTurn == topColor,
-                    timer: timerEnabled ? timer : nil
+                    timer: timerEnabled ? viewModel.timer : nil
                 )
                 .padding(.horizontal, Spacing.md)
 
@@ -115,7 +114,7 @@ struct GameView: View {
                     capturedPieces: bottomColor == .white ? viewModel.capturedByWhite : viewModel.capturedByBlack,
                     materialAdvantage: bottomColor == .white ? max(0, viewModel.materialAdvantage) : max(0, -viewModel.materialAdvantage),
                     isCurrentTurn: viewModel.board.currentTurn == bottomColor,
-                    timer: timerEnabled ? timer : nil
+                    timer: timerEnabled ? viewModel.timer : nil
                 )
                 .padding(.horizontal, Spacing.md)
 
@@ -206,8 +205,8 @@ struct GameView: View {
                     Menu {
                         Button(action: {
                             viewModel.restartGame()
-                            timer?.reset()
-                            timer?.start()
+                            viewModel.timer?.reset()
+                            viewModel.timer?.start()
                         }) {
                             Label("New Game", systemImage: "arrow.clockwise")
                         }
@@ -218,7 +217,7 @@ struct GameView: View {
                             }
 
                             Button(action: { viewModel.offerDraw() }) {
-                                Label("Offer Draw", systemImage: "handshake")
+                                Label("Offer Draw", systemImage: "hand.raised")
                             }
                         }
 
@@ -337,7 +336,7 @@ struct GameView: View {
             }
 
             // AI Thinking Overlay
-            if viewModel.gameState.isAIThinking {
+            if viewModel.isAIThinking {
                 AppColors.overlayLight
                     .ignoresSafeArea()
 
@@ -418,7 +417,7 @@ struct GameView: View {
             }
         }
         .animation(AppAnimation.standard, value: viewModel.showPromotionDialog)
-        .animation(AppAnimation.quick, value: viewModel.gameState.isAIThinking)
+        .animation(AppAnimation.quick, value: viewModel.isAIThinking)
         .animation(AppAnimation.quick, value: viewModel.openingName)
         .animation(AppAnimation.quick, value: viewModel.isViewingHistory)
         .sheet(isPresented: $showMoveHistory) {
@@ -436,8 +435,8 @@ struct GameView: View {
         .alert(viewModel.gameOverMessage, isPresented: $viewModel.showGameOverAlert) {
             Button("New Game") {
                 viewModel.restartGame()
-                timer?.reset()
-                timer?.start()
+                viewModel.timer?.reset()
+                viewModel.timer?.start()
             }
             Button("Analyze") {
                 analyzeGame()
@@ -457,22 +456,15 @@ struct GameView: View {
         .onAppear {
             viewModel.startNewGame()
             if timerEnabled {
-                timer = ChessTimer(timeControl: timeControl)
-                timer?.start()
+                viewModel.setupTimer(timeControl: timeControl)
             }
         }
         .onChange(of: viewModel.board.moveHistory.count) { _ in
-            timer?.switchTurn(to: viewModel.board.currentTurn)
+            viewModel.timer?.switchTurn(to: viewModel.board.currentTurn)
         }
         .onChange(of: viewModel.gameStatus) { status in
             if status != .inProgress {
-                timer?.pause()
-            }
-        }
-        .onChange(of: timer?.hasTimeExpired) { expired in
-            if expired == true, let losingColor = timer?.losingColor {
-                viewModel.gameOverMessage = "\(losingColor.opposite.rawValue.capitalized) wins on time!"
-                viewModel.showGameOverAlert = true
+                viewModel.timer?.pause()
             }
         }
         .onChange(of: viewModel.showGameOverAlert) { show in
@@ -493,12 +485,10 @@ struct GameView: View {
             result = .draw
         case .resigned(let loser):
             result = loser == .white ? .blackWins : .whiteWins
+        case .timeExpired(let loser):
+            result = loser == .white ? .blackWins : .whiteWins
         case .inProgress:
-            if let losingColor = timer?.losingColor {
-                result = losingColor == .white ? .blackWins : .whiteWins
-            } else {
-                return
-            }
+            return
         }
 
         let record = GameRecord(

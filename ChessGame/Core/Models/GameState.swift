@@ -34,6 +34,7 @@ enum GameStatus: Equatable {
     case draw
     case resigned(loser: PieceColor)
     case drawByAgreement
+    case timeExpired(loser: PieceColor)
 }
 
 class GameState: ObservableObject {

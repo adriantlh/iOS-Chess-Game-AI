@@ -25,6 +25,9 @@ class ChessGameViewModel: ObservableObject {
     @Published var pendingPromotionFrom: Position?
     @Published var pendingPromotionTo: Position?
 
+    // Relay for nested ObservableObject — ensures SwiftUI updates when AI thinking changes
+    @Published var isAIThinking = false
+
     // Move navigation
     @Published var viewingMoveIndex: Int?  // nil = live position
     @Published var viewingBoard: ChessBoard?
@@ -47,6 +50,10 @@ class ChessGameViewModel: ObservableObject {
     @Published var showDrawOffer = false
     @Published var showConfirmResign = false
 
+    // Timer (owned by ViewModel so @Published changes propagate to SwiftUI)
+    @Published var timer: ChessTimer?
+    private var timerCancellable: AnyCancellable?
+
     private var ai: ChessAI?
     private var hintEngine = HintEngine()
     private var cancellables = Set<AnyCancellable>()
@@ -62,6 +69,13 @@ class ChessGameViewModel: ObservableObject {
                 } else {
                     self?.threatenedPieces = []
                 }
+            }
+            .store(in: &cancellables)
+
+        // Relay isAIThinking from nested GameState to this ViewModel's @Published
+        gameState.$isAIThinking
+            .sink { [weak self] thinking in
+                self?.isAIThinking = thinking
             }
             .store(in: &cancellables)
     }
@@ -130,6 +144,61 @@ class ChessGameViewModel: ObservableObject {
 
     func restartGame() {
         startNewGame()
+    }
+
+    // MARK: - Timer Management
+
+    func setupTimer(timeControl: TimeControl) {
+        let newTimer = ChessTimer(timeControl: timeControl)
+
+        // Forward timer's objectWillChange to ViewModel for SwiftUI observation
+        timerCancellable = newTimer.objectWillChange
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in
+                self?.objectWillChange.send()
+            }
+
+        // Handle time expiration
+        newTimer.$hasTimeExpired
+            .removeDuplicates()
+            .filter { $0 }
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in
+                self?.handleTimeExpiration()
+            }
+            .store(in: &cancellables)
+
+        timer = newTimer
+        newTimer.start()
+    }
+
+    private func handleTimeExpiration() {
+        guard let losingColor = timer?.losingColor else { return }
+        timer?.pause()
+        gameStatus = .timeExpired(loser: losingColor)
+        gameOverMessage = "\(losingColor.opposite.rawValue.capitalized) wins on time!"
+        showGameOverAlert = true
+        SoundManager.shared.playGameOver()
+    }
+
+    // MARK: - Sound & Haptics (shared helper)
+
+    private func playMoveSound(for move: ChessMove) {
+        if move.isCastling {
+            SoundManager.shared.playCastle()
+        } else if move.capturedPiece != nil {
+            SoundManager.shared.playCapture()
+        } else if move.isPromotion {
+            SoundManager.shared.playPromotion()
+        } else {
+            SoundManager.shared.playMove()
+        }
+
+        if move.capturedPiece != nil {
+            triggerHaptic(.medium)
+        } else {
+            triggerHaptic(.light)
+        }
     }
 
     // MARK: - Move Handling
@@ -211,23 +280,7 @@ class ChessGameViewModel: ObservableObject {
             clearHint()
             updateThreatenedPieces()
 
-            // Sound effects
-            if move.isCastling {
-                SoundManager.shared.playCastle()
-            } else if move.capturedPiece != nil {
-                SoundManager.shared.playCapture()
-            } else if move.isPromotion {
-                SoundManager.shared.playPromotion()
-            } else {
-                SoundManager.shared.playMove()
-            }
-
-            // Haptics
-            if move.capturedPiece != nil {
-                triggerHaptic(.medium)
-            } else {
-                triggerHaptic(.light)
-            }
+            playMoveSound(for: move)
 
             // Update opening name
             openingName = OpeningBook.identify(moves: board.moveHistory)
@@ -247,42 +300,30 @@ class ChessGameViewModel: ObservableObject {
 
         gameState.isAIThinking = true
 
-        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-            guard let self = self else { return }
+        // Copy board before dispatching to background thread for thread safety
+        let boardCopy = board.copyBoard()
 
-            if let move = ai.getBestMove(board: self.board) {
-                DispatchQueue.main.async {
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            let move = ai.getBestMove(board: boardCopy)
+
+            DispatchQueue.main.async {
+                guard let self = self else { return }
+
+                if let move = move {
                     withAnimation(.easeInOut(duration: 0.25)) {
                         if let executedMove = self.board.makeMove(from: move.from, to: move.to) {
                             self.lastMoveFrom = move.from
                             self.lastMoveTo = move.to
                             self.updateThreatenedPieces()
 
-                            // Sound
-                            if executedMove.isCastling {
-                                SoundManager.shared.playCastle()
-                            } else if executedMove.capturedPiece != nil {
-                                SoundManager.shared.playCapture()
-                            } else {
-                                SoundManager.shared.playMove()
-                            }
-
-                            if executedMove.capturedPiece != nil {
-                                self.triggerHaptic(.medium)
-                            } else {
-                                self.triggerHaptic(.light)
-                            }
+                            self.playMoveSound(for: executedMove)
 
                             self.openingName = OpeningBook.identify(moves: self.board.moveHistory)
                             self.checkGameStatus()
                         }
                     }
-                    self.gameState.isAIThinking = false
                 }
-            } else {
-                DispatchQueue.main.async {
-                    self.gameState.isAIThinking = false
-                }
+                self.gameState.isAIThinking = false
             }
         }
     }
@@ -386,9 +427,12 @@ class ChessGameViewModel: ObservableObject {
 
         isCalculatingHint = true
 
+        // Copy board before dispatching to background thread for thread safety
+        let boardCopy = board.copyBoard()
+
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             guard let self = self else { return }
-            let hint = self.hintEngine.getBestMoveHint(board: self.board)
+            let hint = self.hintEngine.getBestMoveHint(board: boardCopy)
 
             DispatchQueue.main.async {
                 self.isCalculatingHint = false
@@ -498,6 +542,8 @@ class ChessGameViewModel: ObservableObject {
         case .draw, .drawByAgreement:
             result = .draw
         case .resigned(let loser):
+            result = loser == .white ? .blackWins : .whiteWins
+        case .timeExpired(let loser):
             result = loser == .white ? .blackWins : .whiteWins
         case .inProgress:
             result = .inProgress
