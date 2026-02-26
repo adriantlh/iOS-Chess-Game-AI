@@ -264,9 +264,9 @@ struct GameView: View {
                     }
 
                     ControlButton(
-                        icon: viewModel.gameState.assistedPlayEnabled ? "eye.fill" : "eye.slash",
+                        icon: viewModel.isAssistedPlayEnabled ? "eye.fill" : "eye.slash",
                         label: "Assist",
-                        color: viewModel.gameState.assistedPlayEnabled ? AppColors.success : AppColors.surface
+                        color: viewModel.isAssistedPlayEnabled ? AppColors.success : AppColors.surface
                     ) {
                         viewModel.toggleAssistedPlay()
                     }
@@ -508,9 +508,12 @@ struct GameView: View {
         showAnalysis = true
         isAnalyzing = true
 
+        // Copy move history on main thread before dispatching to background for thread safety
+        let movesCopy = viewModel.board.moveHistory
+
         DispatchQueue.global(qos: .userInitiated).async {
             let analyzer = GameAnalyzer()
-            let results = analyzer.analyze(moves: viewModel.board.moveHistory)
+            let results = analyzer.analyze(moves: movesCopy)
 
             DispatchQueue.main.async {
                 analysisResults = results

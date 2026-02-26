@@ -25,8 +25,9 @@ class ChessGameViewModel: ObservableObject {
     @Published var pendingPromotionFrom: Position?
     @Published var pendingPromotionTo: Position?
 
-    // Relay for nested ObservableObject — ensures SwiftUI updates when AI thinking changes
+    // Relays for nested ObservableObject — ensures SwiftUI updates propagate
     @Published var isAIThinking = false
+    @Published var isAssistedPlayEnabled = false
 
     // Move navigation
     @Published var viewingMoveIndex: Int?  // nil = live position
@@ -64,6 +65,7 @@ class ChessGameViewModel: ObservableObject {
 
         gameState.$assistedPlayEnabled
             .sink { [weak self] enabled in
+                self?.isAssistedPlayEnabled = enabled
                 if enabled {
                     self?.updateThreatenedPieces()
                 } else {
