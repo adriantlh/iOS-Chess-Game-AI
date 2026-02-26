@@ -32,6 +32,9 @@ enum GameStatus: Equatable {
     case checkmate(winner: PieceColor)
     case stalemate
     case draw
+    case resigned(loser: PieceColor)
+    case drawByAgreement
+    case timeExpired(loser: PieceColor)
 }
 
 class GameState: ObservableObject {
