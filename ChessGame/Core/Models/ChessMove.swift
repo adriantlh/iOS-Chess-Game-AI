@@ -30,17 +30,21 @@ struct ChessMove: Codable {
     let from: Position
     let to: Position
     let piece: ChessPiece
+    let originalPiece: ChessPiece
     let capturedPiece: ChessPiece?
     let isEnPassant: Bool
     let isCastling: Bool
     let isPromotion: Bool
     let promotionPiece: PieceType?
 
-    init(from: Position, to: Position, piece: ChessPiece, capturedPiece: ChessPiece? = nil,
-         isEnPassant: Bool = false, isCastling: Bool = false, isPromotion: Bool = false, promotionPiece: PieceType? = nil) {
+    init(from: Position, to: Position, piece: ChessPiece, originalPiece: ChessPiece,
+         capturedPiece: ChessPiece? = nil,
+         isEnPassant: Bool = false, isCastling: Bool = false,
+         isPromotion: Bool = false, promotionPiece: PieceType? = nil) {
         self.from = from
         self.to = to
         self.piece = piece
+        self.originalPiece = originalPiece
         self.capturedPiece = capturedPiece
         self.isEnPassant = isEnPassant
         self.isCastling = isCastling

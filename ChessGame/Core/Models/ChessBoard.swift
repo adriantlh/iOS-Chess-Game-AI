@@ -13,9 +13,10 @@ class ChessBoard: ObservableObject, Codable {
     var currentTurn: PieceColor
     var moveHistory: [ChessMove]
     var enPassantTarget: Position?
+    var halfMoveClock: Int
 
     enum CodingKeys: String, CodingKey {
-        case board, currentTurn, moveHistory, enPassantTarget
+        case board, currentTurn, moveHistory, enPassantTarget, halfMoveClock
     }
 
     init() {
@@ -23,6 +24,7 @@ class ChessBoard: ObservableObject, Codable {
         self.currentTurn = .white
         self.moveHistory = []
         self.enPassantTarget = nil
+        self.halfMoveClock = 0
         setupInitialBoard()
     }
 
@@ -32,6 +34,7 @@ class ChessBoard: ObservableObject, Codable {
         self.currentTurn = try container.decode(PieceColor.self, forKey: .currentTurn)
         self.moveHistory = try container.decode([ChessMove].self, forKey: .moveHistory)
         self.enPassantTarget = try container.decodeIfPresent(Position.self, forKey: .enPassantTarget)
+        self.halfMoveClock = try container.decodeIfPresent(Int.self, forKey: .halfMoveClock) ?? 0
     }
 
     func encode(to encoder: Encoder) throws {
@@ -40,6 +43,7 @@ class ChessBoard: ObservableObject, Codable {
         try container.encode(currentTurn, forKey: .currentTurn)
         try container.encode(moveHistory, forKey: .moveHistory)
         try container.encode(enPassantTarget, forKey: .enPassantTarget)
+        try container.encode(halfMoveClock, forKey: .halfMoveClock)
     }
 
     func setupInitialBoard() {
@@ -75,6 +79,7 @@ class ChessBoard: ObservableObject, Codable {
         currentTurn = .white
         moveHistory = []
         enPassantTarget = nil
+        halfMoveClock = 0
     }
 
     func pieceAt(_ position: Position) -> ChessPiece? {
@@ -248,7 +253,8 @@ class ChessBoard: ObservableObject, Codable {
                 let pos = Position(row: row, col: col)
                 if let piece = pieceAt(pos), piece.color == color {
                     if isValidPieceMove(piece: piece, from: pos, to: position) {
-                        if piece.type != .king || abs(position.row - row) <= 1 && abs(position.col - col) <= 1 {
+                        // For kings, only consider normal moves (not castling) to avoid recursion
+                        if piece.type != .king || (abs(position.row - row) <= 1 && abs(position.col - col) <= 1) {
                             return true
                         }
                     }
@@ -280,14 +286,29 @@ class ChessBoard: ObservableObject, Codable {
         let originalPiece = pieceAt(from)
         let capturedPiece = pieceAt(to)
 
+        // Handle en passant simulation
+        var enPassantCapturePos: Position?
+        if let piece = originalPiece, piece.type == .pawn, to == enPassantTarget {
+            let captureRow = piece.color == .white ? to.row - 1 : to.row + 1
+            enPassantCapturePos = Position(row: captureRow, col: to.col)
+        }
+
         setPiece(originalPiece, at: to)
         setPiece(nil, at: from)
+        var enPassantCaptured: ChessPiece?
+        if let epPos = enPassantCapturePos {
+            enPassantCaptured = pieceAt(epPos)
+            setPiece(nil, at: epPos)
+        }
 
         let inCheck = isInCheck(color: color)
 
-        // Undo the move
+        // Undo the simulation
         setPiece(originalPiece, at: from)
         setPiece(capturedPiece, at: to)
+        if let epPos = enPassantCapturePos {
+            setPiece(enPassantCaptured, at: epPos)
+        }
 
         return inCheck
     }
@@ -327,13 +348,59 @@ class ChessBoard: ObservableObject, Codable {
         return false
     }
 
+    // MARK: - Draw Detection
+
+    func isDrawByFiftyMoveRule() -> Bool {
+        return halfMoveClock >= 100
+    }
+
+    func isInsufficientMaterial() -> Bool {
+        var whitePieces: [PieceType] = []
+        var blackPieces: [PieceType] = []
+
+        for row in 0..<8 {
+            for col in 0..<8 {
+                if let piece = pieceAt(Position(row: row, col: col)) {
+                    if piece.color == .white {
+                        whitePieces.append(piece.type)
+                    } else {
+                        blackPieces.append(piece.type)
+                    }
+                }
+            }
+        }
+
+        // King vs King
+        if whitePieces.count == 1 && blackPieces.count == 1 {
+            return true
+        }
+
+        // King + Bishop vs King or King + Knight vs King
+        if whitePieces.count == 1 && blackPieces.count == 2 {
+            let nonKing = blackPieces.first { $0 != .king }
+            if nonKing == .bishop || nonKing == .knight { return true }
+        }
+        if blackPieces.count == 1 && whitePieces.count == 2 {
+            let nonKing = whitePieces.first { $0 != .king }
+            if nonKing == .bishop || nonKing == .knight { return true }
+        }
+
+        return false
+    }
+
     // MARK: - Move Execution
 
-    func makeMove(from: Position, to: Position) -> ChessMove? {
+    func isPromotionMove(from: Position, to: Position) -> Bool {
+        guard let piece = pieceAt(from), piece.type == .pawn else { return false }
+        return (piece.color == .white && to.row == 7) || (piece.color == .black && to.row == 0)
+    }
+
+    func makeMove(from: Position, to: Position, promotionType: PieceType = .queen) -> ChessMove? {
         guard isValidMove(from: from, to: to) else { return nil }
         guard var piece = pieceAt(from) else { return nil }
 
-        let capturedPiece = pieceAt(to)
+        let originalPiece = piece
+        var capturedPiece = pieceAt(to)
         var isEnPassant = false
         var isCastling = false
         var isPromotion = false
@@ -343,7 +410,9 @@ class ChessBoard: ObservableObject, Codable {
         if piece.type == .pawn && to == enPassantTarget {
             isEnPassant = true
             let captureRow = piece.color == .white ? to.row - 1 : to.row + 1
-            setPiece(nil, at: Position(row: captureRow, col: to.col))
+            let capturePos = Position(row: captureRow, col: to.col)
+            capturedPiece = pieceAt(capturePos)
+            setPiece(nil, at: capturePos)
         }
 
         // Handle castling
@@ -363,15 +432,22 @@ class ChessBoard: ObservableObject, Codable {
         // Handle pawn promotion
         if piece.type == .pawn && ((piece.color == .white && to.row == 7) || (piece.color == .black && to.row == 0)) {
             isPromotion = true
-            promotionPiece = .queen
-            piece = ChessPiece(type: .queen, color: piece.color, hasMoved: true)
+            promotionPiece = promotionType
+            piece = ChessPiece(type: promotionType, color: piece.color, hasMoved: true)
         } else {
             piece.hasMoved = true
         }
 
+        // Update half-move clock (reset on pawn move or capture)
+        if originalPiece.type == .pawn || capturedPiece != nil {
+            halfMoveClock = 0
+        } else {
+            halfMoveClock += 1
+        }
+
         // Update en passant target
-        if piece.type == .pawn && abs(to.row - from.row) == 2 {
-            let direction = piece.color == .white ? 1 : -1
+        if originalPiece.type == .pawn && abs(to.row - from.row) == 2 {
+            let direction = originalPiece.color == .white ? 1 : -1
             enPassantTarget = Position(row: from.row + direction, col: from.col)
         } else {
             enPassantTarget = nil
@@ -381,7 +457,8 @@ class ChessBoard: ObservableObject, Codable {
         setPiece(piece, at: to)
         setPiece(nil, at: from)
 
-        let move = ChessMove(from: from, to: to, piece: piece, capturedPiece: capturedPiece,
+        let move = ChessMove(from: from, to: to, piece: piece, originalPiece: originalPiece,
+                            capturedPiece: capturedPiece,
                             isEnPassant: isEnPassant, isCastling: isCastling,
                             isPromotion: isPromotion, promotionPiece: promotionPiece)
         moveHistory.append(move)
@@ -435,43 +512,49 @@ class ChessBoard: ObservableObject, Codable {
         // Switch turn back
         currentTurn = currentTurn.opposite
 
-        // Restore piece at original position
-        var originalPiece = lastMove.piece
-        originalPiece.hasMoved = moveHistory.contains { move in
-            move.from == lastMove.from || move.to == lastMove.from
-        }
+        // Restore original piece at its starting position
+        setPiece(lastMove.originalPiece, at: lastMove.from)
 
-        setPiece(originalPiece, at: lastMove.from)
-        setPiece(lastMove.capturedPiece, at: lastMove.to)
-
-        // Handle special cases
+        // Restore captured piece at destination (nil for en passant target square)
         if lastMove.isEnPassant {
-            let captureRow = originalPiece.color == .white ? lastMove.to.row - 1 : lastMove.to.row + 1
-            let capturedPawn = ChessPiece(type: .pawn, color: originalPiece.color.opposite, hasMoved: true)
-            setPiece(capturedPawn, at: Position(row: captureRow, col: lastMove.to.col))
+            setPiece(nil, at: lastMove.to)
+            let captureRow = lastMove.originalPiece.color == .white ? lastMove.to.row - 1 : lastMove.to.row + 1
+            setPiece(lastMove.capturedPiece, at: Position(row: captureRow, col: lastMove.to.col))
+        } else {
+            setPiece(lastMove.capturedPiece, at: lastMove.to)
         }
 
+        // Undo castling rook move
         if lastMove.isCastling {
             let direction = lastMove.to.col > lastMove.from.col ? 1 : -1
             let rookFromCol = direction == 1 ? 7 : 0
             let rookToCol = lastMove.from.col + direction
 
-            var rook = ChessPiece(type: .rook, color: originalPiece.color, hasMoved: false)
+            let rook = ChessPiece(type: .rook, color: lastMove.originalPiece.color, hasMoved: false)
             setPiece(rook, at: Position(row: lastMove.from.row, col: rookFromCol))
             setPiece(nil, at: Position(row: lastMove.from.row, col: rookToCol))
         }
 
         // Restore en passant target from previous move
-        if moveHistory.count > 0 {
+        if !moveHistory.isEmpty {
             let prevMove = moveHistory[moveHistory.count - 1]
-            if prevMove.piece.type == .pawn && abs(prevMove.to.row - prevMove.from.row) == 2 {
-                let direction = prevMove.piece.color == .white ? 1 : -1
+            if prevMove.originalPiece.type == .pawn && abs(prevMove.to.row - prevMove.from.row) == 2 {
+                let direction = prevMove.originalPiece.color == .white ? 1 : -1
                 enPassantTarget = Position(row: prevMove.from.row + direction, col: prevMove.from.col)
             } else {
                 enPassantTarget = nil
             }
         } else {
             enPassantTarget = nil
+        }
+
+        // Restore half-move clock (approximate - recalculate from history)
+        halfMoveClock = 0
+        for move in moveHistory.reversed() {
+            if move.originalPiece.type == .pawn || move.capturedPiece != nil {
+                break
+            }
+            halfMoveClock += 1
         }
 
         return true
@@ -501,6 +584,7 @@ class ChessBoard: ObservableObject, Codable {
         newBoard.currentTurn = self.currentTurn
         newBoard.moveHistory = self.moveHistory
         newBoard.enPassantTarget = self.enPassantTarget
+        newBoard.halfMoveClock = self.halfMoveClock
         return newBoard
     }
 }

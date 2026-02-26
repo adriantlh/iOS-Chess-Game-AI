@@ -7,6 +7,7 @@
 
 import Foundation
 import SwiftUI
+import UIKit
 import Combine
 
 class ChessGameViewModel: ObservableObject {
@@ -18,6 +19,11 @@ class ChessGameViewModel: ObservableObject {
     @Published var gameStatus: GameStatus = .inProgress
     @Published var showGameOverAlert = false
     @Published var gameOverMessage = ""
+    @Published var lastMoveFrom: Position?
+    @Published var lastMoveTo: Position?
+    @Published var showPromotionDialog = false
+    @Published var pendingPromotionFrom: Position?
+    @Published var pendingPromotionTo: Position?
 
     private var ai: ChessAI?
     private var cancellables = Set<AnyCancellable>()
@@ -26,7 +32,6 @@ class ChessGameViewModel: ObservableObject {
         self.board = ChessBoard()
         self.gameState = GameState()
 
-        // Update threatened pieces when assisted play is enabled
         gameState.$assistedPlayEnabled
             .sink { [weak self] enabled in
                 if enabled {
@@ -38,6 +43,28 @@ class ChessGameViewModel: ObservableObject {
             .store(in: &cancellables)
     }
 
+    // MARK: - Computed Properties
+
+    var capturedByWhite: [ChessPiece] {
+        board.moveHistory
+            .compactMap { $0.capturedPiece }
+            .filter { $0.color == .black }
+            .sorted { $0.type.value > $1.type.value }
+    }
+
+    var capturedByBlack: [ChessPiece] {
+        board.moveHistory
+            .compactMap { $0.capturedPiece }
+            .filter { $0.color == .white }
+            .sorted { $0.type.value > $1.type.value }
+    }
+
+    var materialAdvantage: Int {
+        let whiteCaptures = capturedByWhite.reduce(0) { $0 + $1.type.value }
+        let blackCaptures = capturedByBlack.reduce(0) { $0 + $1.type.value }
+        return whiteCaptures - blackCaptures
+    }
+
     // MARK: - Game Control
 
     func startNewGame() {
@@ -47,11 +74,12 @@ class ChessGameViewModel: ObservableObject {
         gameStatus = .inProgress
         showGameOverAlert = false
         gameOverMessage = ""
+        lastMoveFrom = nil
+        lastMoveTo = nil
 
         if gameState.gameMode == .playerVsAI {
             ai = ChessAI(difficulty: gameState.aiDifficulty)
 
-            // If AI plays white, make first move
             if gameState.playerColor == .black {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                     self.makeAIMove()
@@ -73,36 +101,26 @@ class ChessGameViewModel: ObservableObject {
     func handleSquareTap(row: Int, col: Int) {
         let position = Position(row: row, col: col)
 
-        // If AI is thinking, ignore input
-        if gameState.isAIThinking {
-            return
-        }
+        if gameState.isAIThinking { return }
 
-        // If game is over, ignore input
         if case .inProgress = gameStatus {
-            // Continue
         } else {
             return
         }
 
-        // If playing against AI and it's AI's turn, ignore input
         if gameState.gameMode == .playerVsAI && board.currentTurn != gameState.playerColor {
             return
         }
 
         if let selected = selectedPosition {
-            // Try to make a move
             if possibleMoves.contains(position) {
                 makeMove(from: selected, to: position)
             } else if let piece = board.pieceAt(position), piece.color == board.currentTurn {
-                // Select a different piece
                 selectPiece(at: position)
             } else {
-                // Deselect
                 deselectPiece()
             }
         } else {
-            // Select a piece
             if let piece = board.pieceAt(position), piece.color == board.currentTurn {
                 selectPiece(at: position)
             }
@@ -112,6 +130,7 @@ class ChessGameViewModel: ObservableObject {
     private func selectPiece(at position: Position) {
         selectedPosition = position
         possibleMoves = board.getPossibleMoves(from: position)
+        triggerHaptic(.light)
     }
 
     private func deselectPiece() {
@@ -120,14 +139,47 @@ class ChessGameViewModel: ObservableObject {
     }
 
     private func makeMove(from: Position, to: Position) {
-        if let _ = board.makeMove(from: from, to: to) {
+        // Check if this is a promotion move
+        if board.isPromotionMove(from: from, to: to) {
+            // Auto-promote to queen if setting is enabled
+            if UserDefaults.standard.bool(forKey: "autoPromotionQueen") {
+                executeMove(from: from, to: to, promotionType: .queen)
+                return
+            }
+            pendingPromotionFrom = from
+            pendingPromotionTo = to
+            showPromotionDialog = true
+            return
+        }
+
+        executeMove(from: from, to: to)
+    }
+
+    func completePromotion(pieceType: PieceType) {
+        guard let from = pendingPromotionFrom, let to = pendingPromotionTo else { return }
+        showPromotionDialog = false
+        pendingPromotionFrom = nil
+        pendingPromotionTo = nil
+        executeMove(from: from, to: to, promotionType: pieceType)
+    }
+
+    private func executeMove(from: Position, to: Position, promotionType: PieceType = .queen) {
+        if let move = board.makeMove(from: from, to: to, promotionType: promotionType) {
+            lastMoveFrom = from
+            lastMoveTo = to
             deselectPiece()
             updateThreatenedPieces()
+
+            if move.capturedPiece != nil {
+                triggerHaptic(.medium)
+            } else {
+                triggerHaptic(.light)
+            }
+
             checkGameStatus()
 
-            // If playing against AI, make AI move
             if gameState.gameMode == .playerVsAI && gameStatus == .inProgress {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                     self.makeAIMove()
                 }
             }
@@ -144,9 +196,20 @@ class ChessGameViewModel: ObservableObject {
 
             if let move = ai.getBestMove(board: self.board) {
                 DispatchQueue.main.async {
-                    if let _ = self.board.makeMove(from: move.from, to: move.to) {
-                        self.updateThreatenedPieces()
-                        self.checkGameStatus()
+                    withAnimation(.easeInOut(duration: 0.25)) {
+                        if let executedMove = self.board.makeMove(from: move.from, to: move.to) {
+                            self.lastMoveFrom = move.from
+                            self.lastMoveTo = move.to
+                            self.updateThreatenedPieces()
+
+                            if executedMove.capturedPiece != nil {
+                                self.triggerHaptic(.medium)
+                            } else {
+                                self.triggerHaptic(.light)
+                            }
+
+                            self.checkGameStatus()
+                        }
                     }
                     self.gameState.isAIThinking = false
                 }
@@ -161,8 +224,6 @@ class ChessGameViewModel: ObservableObject {
     // MARK: - Undo
 
     func undoMove() {
-        // In PvP mode, undo one move
-        // In PvAI mode, undo two moves (player's move and AI's move)
         if gameState.gameMode == .playerVsAI {
             _ = board.undoLastMove()
             _ = board.undoLastMove()
@@ -170,9 +231,23 @@ class ChessGameViewModel: ObservableObject {
             _ = board.undoLastMove()
         }
 
+        // Update last move highlight
+        if let lastMove = board.moveHistory.last {
+            lastMoveFrom = lastMove.from
+            lastMoveTo = lastMove.to
+        } else {
+            lastMoveFrom = nil
+            lastMoveTo = nil
+        }
+
         deselectPiece()
         updateThreatenedPieces()
-        checkGameStatus()
+
+        if gameStatus != .inProgress {
+            gameStatus = .inProgress
+            showGameOverAlert = false
+            gameOverMessage = ""
+        }
     }
 
     func canUndo() -> Bool {
@@ -192,10 +267,21 @@ class ChessGameViewModel: ObservableObject {
             gameStatus = .checkmate(winner: currentColor.opposite)
             gameOverMessage = "\(currentColor.opposite.rawValue.capitalized) wins by checkmate!"
             showGameOverAlert = true
+            triggerNotification(.success)
         } else if board.isStalemate(color: currentColor) {
             gameStatus = .stalemate
             gameOverMessage = "Game ended in stalemate!"
             showGameOverAlert = true
+        } else if board.isInsufficientMaterial() {
+            gameStatus = .draw
+            gameOverMessage = "Draw by insufficient material!"
+            showGameOverAlert = true
+        } else if board.isDrawByFiftyMoveRule() {
+            gameStatus = .draw
+            gameOverMessage = "Draw by fifty-move rule!"
+            showGameOverAlert = true
+        } else if board.isInCheck(color: currentColor) {
+            triggerNotification(.warning)
         }
     }
 
@@ -211,6 +297,20 @@ class ChessGameViewModel: ObservableObject {
 
     func toggleAssistedPlay() {
         gameState.assistedPlayEnabled.toggle()
+    }
+
+    // MARK: - Haptic Feedback
+
+    private func triggerHaptic(_ style: UIImpactFeedbackGenerator.FeedbackStyle) {
+        guard UserDefaults.standard.bool(forKey: "vibrationEnabled") else { return }
+        let generator = UIImpactFeedbackGenerator(style: style)
+        generator.impactOccurred()
+    }
+
+    private func triggerNotification(_ type: UINotificationFeedbackGenerator.FeedbackType) {
+        guard UserDefaults.standard.bool(forKey: "vibrationEnabled") else { return }
+        let generator = UINotificationFeedbackGenerator()
+        generator.notificationOccurred(type)
     }
 
     // MARK: - Helpers
@@ -234,5 +334,9 @@ class ChessGameViewModel: ObservableObject {
             return false
         }
         return board.isInCheck(color: piece.color)
+    }
+
+    func isLastMoveSquare(_ position: Position) -> Bool {
+        return position == lastMoveFrom || position == lastMoveTo
     }
 }

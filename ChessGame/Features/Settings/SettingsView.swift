@@ -17,7 +17,7 @@ struct SettingsView: View {
     var body: some View {
         NavigationView {
             ZStack {
-                Color(red: 0.2, green: 0.2, blue: 0.25)
+                AppColors.backgroundSecondary
                     .ignoresSafeArea()
 
                 Form {
@@ -49,7 +49,6 @@ struct SettingsView: View {
 
                     Section {
                         Button(action: {
-                            // Reset all settings
                             soundEnabled = true
                             vibrationEnabled = true
                             showCoordinates = false
@@ -58,7 +57,7 @@ struct SettingsView: View {
                             HStack {
                                 Spacer()
                                 Text("Reset All Settings")
-                                    .foregroundColor(.red)
+                                    .foregroundColor(AppColors.error)
                                 Spacer()
                             }
                         }
@@ -76,7 +75,7 @@ struct SettingsView: View {
                         Image(systemName: "chevron.left")
                         Text("Back")
                     }
-                    .foregroundColor(.white)
+                    .foregroundColor(AppColors.textPrimary)
                 }
             )
         }

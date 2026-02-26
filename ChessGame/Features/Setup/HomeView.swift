@@ -24,40 +24,41 @@ struct HomeView: View {
                 // Background gradient
                 LinearGradient(
                     colors: [
-                        Color(red: 0.15, green: 0.15, blue: 0.2),
-                        Color(red: 0.25, green: 0.25, blue: 0.35)
+                        AppColors.backgroundPrimary,
+                        AppColors.backgroundSecondary
                     ],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
                 )
                 .ignoresSafeArea()
 
-                VStack(spacing: 30) {
+                VStack(spacing: Spacing.xxl) {
                     // App Title
-                    VStack(spacing: 10) {
+                    VStack(spacing: Spacing.md) {
                         Text("♚")
-                            .font(.system(size: 80))
-                            .foregroundColor(.white)
+                            .font(.system(size: 72))
+                            .foregroundColor(AppColors.textPrimary)
+                            .shadow(color: AppColors.accent.opacity(0.3), radius: 10)
 
                         Text("Chess Master")
-                            .font(.system(size: 42, weight: .bold, design: .serif))
-                            .foregroundColor(.white)
+                            .font(.system(size: 38, weight: .bold, design: .rounded))
+                            .foregroundColor(AppColors.textPrimary)
 
-                        Text("Train • Play • Analyze")
-                            .font(.system(size: 16, weight: .light))
-                            .foregroundColor(.white.opacity(0.8))
+                        Text("Train  ·  Play  ·  Analyze")
+                            .font(AppFonts.body())
+                            .foregroundColor(AppColors.textSecondary)
                     }
                     .padding(.top, 40)
 
                     Spacer()
 
                     // Menu Options
-                    VStack(spacing: 20) {
+                    VStack(spacing: Spacing.lg) {
                         MenuButton(
                             icon: "gamecontroller.fill",
                             title: "Play Game",
                             subtitle: "Play vs Player or AI",
-                            color: .green
+                            color: AppColors.success
                         ) {
                             selectedDestination = .playGame
                             showGameSetup = true
@@ -76,7 +77,7 @@ struct HomeView: View {
                             icon: "clock.fill",
                             title: "Saved Games",
                             subtitle: "Continue or review games",
-                            color: .blue
+                            color: AppColors.info
                         ) {
                             selectedDestination = .savedGames
                         }
@@ -90,15 +91,15 @@ struct HomeView: View {
                             selectedDestination = .settings
                         }
                     }
-                    .padding(.horizontal, 30)
+                    .padding(.horizontal, Spacing.xl)
 
                     Spacer()
 
                     // Footer
                     Text("Version 1.0")
-                        .font(.caption)
-                        .foregroundColor(.white.opacity(0.5))
-                        .padding(.bottom, 20)
+                        .font(AppFonts.caption(12))
+                        .foregroundColor(AppColors.textTertiary)
+                        .padding(.bottom, Spacing.lg)
                 }
             }
             .navigationBarHidden(true)
@@ -137,34 +138,35 @@ struct MenuButton: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 20) {
+            HStack(spacing: Spacing.lg) {
                 Image(systemName: icon)
-                    .font(.system(size: 30))
-                    .foregroundColor(.white)
-                    .frame(width: 60, height: 60)
+                    .font(.system(size: 26))
+                    .foregroundColor(AppColors.textPrimary)
+                    .frame(width: 52, height: 52)
                     .background(color)
-                    .cornerRadius(15)
+                    .cornerRadius(Radii.md)
 
-                VStack(alignment: .leading, spacing: 5) {
+                VStack(alignment: .leading, spacing: Spacing.xs) {
                     Text(title)
-                        .font(.system(size: 20, weight: .semibold))
-                        .foregroundColor(.white)
+                        .font(AppFonts.headline(18))
+                        .foregroundColor(AppColors.textPrimary)
 
                     Text(subtitle)
-                        .font(.system(size: 14))
-                        .foregroundColor(.white.opacity(0.7))
+                        .font(AppFonts.caption())
+                        .foregroundColor(AppColors.textSecondary)
                 }
 
                 Spacer()
 
                 Image(systemName: "chevron.right")
-                    .foregroundColor(.white.opacity(0.5))
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(AppColors.textTertiary)
             }
-            .padding()
-            .background(Color.white.opacity(0.1))
-            .cornerRadius(15)
+            .padding(Spacing.lg)
+            .background(AppColors.surface)
+            .cornerRadius(Radii.lg)
         }
-        .buttonStyle(PlainButtonStyle())
+        .buttonStyle(ScaleButtonStyle())
     }
 }
 

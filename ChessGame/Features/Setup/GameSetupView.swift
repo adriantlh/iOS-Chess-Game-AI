@@ -20,26 +20,26 @@ struct GameSetupView: View {
     var body: some View {
         NavigationView {
             ZStack {
-                Color(red: 0.2, green: 0.2, blue: 0.25)
+                AppColors.backgroundSecondary
                     .ignoresSafeArea()
 
                 ScrollView {
-                    VStack(spacing: 25) {
+                    VStack(spacing: Spacing.xl) {
                         // Header
-                        VStack(spacing: 10) {
+                        VStack(spacing: Spacing.sm) {
                             Text("New Game")
-                                .font(.system(size: 32, weight: .bold))
-                                .foregroundColor(.white)
+                                .font(AppFonts.display())
+                                .foregroundColor(AppColors.textPrimary)
 
                             Text("Configure your game settings")
-                                .font(.system(size: 16))
-                                .foregroundColor(.white.opacity(0.7))
+                                .font(AppFonts.body())
+                                .foregroundColor(AppColors.textSecondary)
                         }
-                        .padding(.top, 20)
+                        .padding(.top, Spacing.lg)
 
                         // Game Mode
                         SettingSection(title: "Game Mode") {
-                            VStack(spacing: 12) {
+                            VStack(spacing: Spacing.md) {
                                 GameModeCard(
                                     icon: "person.2.fill",
                                     title: "Player vs Player",
@@ -63,7 +63,7 @@ struct GameSetupView: View {
                         // AI Settings (only if vs AI)
                         if selectedMode == .playerVsAI {
                             SettingSection(title: "AI Difficulty") {
-                                HStack(spacing: 12) {
+                                HStack(spacing: Spacing.md) {
                                     ForEach(AIDifficulty.allCases, id: \.self) { difficulty in
                                         DifficultyButton(
                                             difficulty: difficulty,
@@ -76,7 +76,7 @@ struct GameSetupView: View {
                             }
 
                             SettingSection(title: "Your Color") {
-                                HStack(spacing: 12) {
+                                HStack(spacing: Spacing.md) {
                                     ColorButton(
                                         color: .white,
                                         isSelected: playerColor == .white
@@ -96,16 +96,16 @@ struct GameSetupView: View {
 
                         // Timer Settings
                         SettingSection(title: "Time Control") {
-                            VStack(spacing: 12) {
+                            VStack(spacing: Spacing.md) {
                                 Toggle(isOn: $enableTimer) {
                                     HStack {
                                         Image(systemName: "timer")
-                                            .foregroundColor(.blue)
+                                            .foregroundColor(AppColors.info)
                                         Text("Enable Timer")
-                                            .foregroundColor(.white)
+                                            .foregroundColor(AppColors.textPrimary)
                                     }
                                 }
-                                .toggleStyle(SwitchToggleStyle(tint: .blue))
+                                .toggleStyle(SwitchToggleStyle(tint: AppColors.accent))
 
                                 if enableTimer {
                                     Picker("Time Control", selection: $selectedTimeControl) {
@@ -123,12 +123,12 @@ struct GameSetupView: View {
                             Toggle(isOn: $assistedPlayEnabled) {
                                 HStack {
                                     Image(systemName: "eye.fill")
-                                        .foregroundColor(.orange)
+                                        .foregroundColor(AppColors.warning)
                                     Text("Show Threatened Pieces")
-                                        .foregroundColor(.white)
+                                        .foregroundColor(AppColors.textPrimary)
                                 }
                             }
-                            .toggleStyle(SwitchToggleStyle(tint: .orange))
+                            .toggleStyle(SwitchToggleStyle(tint: AppColors.warning))
                         }
 
                         // Start Button
@@ -141,14 +141,16 @@ struct GameSetupView: View {
                                     .fontWeight(.bold)
                             }
                             .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(Color.green)
-                            .foregroundColor(.white)
-                            .cornerRadius(15)
+                            .frame(minHeight: 44)
+                            .padding(.vertical, Spacing.sm)
+                            .background(AppColors.success)
+                            .foregroundColor(AppColors.textPrimary)
+                            .cornerRadius(Radii.lg)
                         }
-                        .padding(.top, 20)
+                        .buttonStyle(ScaleButtonStyle())
+                        .padding(.top, Spacing.lg)
                     }
-                    .padding()
+                    .padding(Spacing.lg)
                 }
             }
             .navigationBarItems(
@@ -159,7 +161,7 @@ struct GameSetupView: View {
                         Image(systemName: "chevron.left")
                         Text("Back")
                     }
-                    .foregroundColor(.white)
+                    .foregroundColor(AppColors.textPrimary)
                 }
             )
             .navigationBarTitleDisplayMode(.inline)
@@ -192,15 +194,15 @@ struct SettingSection<Content: View>: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: Spacing.md) {
             Text(title)
-                .font(.system(size: 18, weight: .semibold))
-                .foregroundColor(.white.opacity(0.9))
+                .font(AppFonts.headline())
+                .foregroundColor(AppColors.textSecondary)
 
             content
-                .padding()
-                .background(Color.white.opacity(0.1))
-                .cornerRadius(12)
+                .padding(Spacing.lg)
+                .background(AppColors.surface)
+                .cornerRadius(Radii.md)
         }
     }
 }
@@ -214,38 +216,40 @@ struct GameModeCard: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 15) {
+            HStack(spacing: Spacing.lg) {
                 Image(systemName: icon)
-                    .font(.system(size: 24))
-                    .foregroundColor(isSelected ? .white : .white.opacity(0.7))
+                    .font(.system(size: 22))
+                    .foregroundColor(isSelected ? AppColors.textPrimary : AppColors.textSecondary)
                     .frame(width: 40)
 
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: Spacing.xs) {
                     Text(title)
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundColor(.white)
+                        .font(AppFonts.body())
+                        .fontWeight(.semibold)
+                        .foregroundColor(AppColors.textPrimary)
 
                     Text(description)
-                        .font(.system(size: 13))
-                        .foregroundColor(.white.opacity(0.6))
+                        .font(AppFonts.caption())
+                        .foregroundColor(AppColors.textTertiary)
                 }
 
                 Spacer()
 
                 if isSelected {
                     Image(systemName: "checkmark.circle.fill")
-                        .foregroundColor(.green)
+                        .foregroundColor(AppColors.success)
+                        .font(.system(size: 20))
                 }
             }
-            .padding()
-            .background(isSelected ? Color.blue.opacity(0.3) : Color.white.opacity(0.05))
-            .cornerRadius(10)
+            .padding(Spacing.lg)
+            .background(isSelected ? AppColors.accent.opacity(0.15) : AppColors.backgroundSecondary)
+            .cornerRadius(Radii.md)
             .overlay(
-                RoundedRectangle(cornerRadius: 10)
-                    .stroke(isSelected ? Color.blue : Color.clear, lineWidth: 2)
+                RoundedRectangle(cornerRadius: Radii.md)
+                    .stroke(isSelected ? AppColors.accent : Color.clear, lineWidth: 1.5)
             )
         }
-        .buttonStyle(PlainButtonStyle())
+        .buttonStyle(ScaleButtonStyle())
     }
 }
 
@@ -256,27 +260,33 @@ struct DifficultyButton: View {
 
     var body: some View {
         Button(action: action) {
-            VStack(spacing: 8) {
+            VStack(spacing: Spacing.sm) {
                 Text(difficulty.rawValue)
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(.white)
+                    .font(AppFonts.caption())
+                    .fontWeight(.semibold)
+                    .foregroundColor(AppColors.textPrimary)
 
                 if isSelected {
                     Circle()
-                        .fill(Color.green)
+                        .fill(AppColors.success)
+                        .frame(width: 8, height: 8)
+                } else {
+                    Circle()
+                        .fill(Color.clear)
                         .frame(width: 8, height: 8)
                 }
             }
             .frame(maxWidth: .infinity)
-            .padding()
-            .background(isSelected ? Color.blue.opacity(0.3) : Color.white.opacity(0.05))
-            .cornerRadius(10)
+            .frame(minHeight: 44)
+            .padding(.vertical, Spacing.xs)
+            .background(isSelected ? AppColors.accent.opacity(0.15) : AppColors.backgroundSecondary)
+            .cornerRadius(Radii.md)
             .overlay(
-                RoundedRectangle(cornerRadius: 10)
-                    .stroke(isSelected ? Color.blue : Color.clear, lineWidth: 2)
+                RoundedRectangle(cornerRadius: Radii.md)
+                    .stroke(isSelected ? AppColors.accent : Color.clear, lineWidth: 1.5)
             )
         }
-        .buttonStyle(PlainButtonStyle())
+        .buttonStyle(ScaleButtonStyle())
     }
 }
 
@@ -290,25 +300,27 @@ struct ColorButton: View {
             HStack {
                 Circle()
                     .fill(color == .white ? Color.white : Color.black)
-                    .frame(width: 30, height: 30)
+                    .frame(width: 28, height: 28)
                     .overlay(
                         Circle()
-                            .stroke(Color.gray, lineWidth: 1)
+                            .stroke(Color.gray.opacity(0.4), lineWidth: 1)
                     )
 
                 Text(color.rawValue.capitalized)
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(.white)
+                    .font(AppFonts.body())
+                    .fontWeight(.semibold)
+                    .foregroundColor(AppColors.textPrimary)
             }
             .frame(maxWidth: .infinity)
-            .padding()
-            .background(isSelected ? Color.blue.opacity(0.3) : Color.white.opacity(0.05))
-            .cornerRadius(10)
+            .frame(minHeight: 44)
+            .padding(.vertical, Spacing.xs)
+            .background(isSelected ? AppColors.accent.opacity(0.15) : AppColors.backgroundSecondary)
+            .cornerRadius(Radii.md)
             .overlay(
-                RoundedRectangle(cornerRadius: 10)
-                    .stroke(isSelected ? Color.blue : Color.clear, lineWidth: 2)
+                RoundedRectangle(cornerRadius: Radii.md)
+                    .stroke(isSelected ? AppColors.accent : Color.clear, lineWidth: 1.5)
             )
         }
-        .buttonStyle(PlainButtonStyle())
+        .buttonStyle(ScaleButtonStyle())
     }
 }
