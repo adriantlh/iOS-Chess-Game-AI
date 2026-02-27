@@ -36,13 +36,19 @@ enum PieceType: String, Codable {
     }
 
     func symbol(for color: PieceColor) -> String {
-        switch self {
-        case .pawn: return "♟"
-        case .rook: return "♜"
-        case .knight: return "♞"
-        case .bishop: return "♝"
-        case .queen: return "♛"
-        case .king: return "♚"
+        switch (self, color) {
+        case (.pawn, .white): return "♙"
+        case (.pawn, .black): return "♟"
+        case (.rook, .white): return "♖"
+        case (.rook, .black): return "♜"
+        case (.knight, .white): return "♘"
+        case (.knight, .black): return "♞"
+        case (.bishop, .white): return "♗"
+        case (.bishop, .black): return "♝"
+        case (.queen, .white): return "♕"
+        case (.queen, .black): return "♛"
+        case (.king, .white): return "♔"
+        case (.king, .black): return "♚"
         }
     }
 }

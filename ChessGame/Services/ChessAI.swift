@@ -138,10 +138,12 @@ class ChessAI {
 
     // MARK: - Medium/Hard AI (Minimax with Alpha-Beta Pruning)
 
+    private static let infinity = 10_000_000
+
     private func getMinimaxMove(board: ChessBoard, depth: Int) -> (from: Position, to: Position)? {
         var bestMove: (from: Position, to: Position)?
-        var bestScore = Int.min
-        var currentAlpha = Int.min
+        var bestScore = -ChessAI.infinity
+        var currentAlpha = -ChessAI.infinity
 
         var allMoves = collectAndOrderMoves(board: board)
         allMoves.shuffle()
@@ -154,7 +156,7 @@ class ChessAI {
 
         for move in allMoves {
             if let _ = board.makeMove(from: move.from, to: move.to) {
-                let score = -negamax(board: board, depth: depth - 1, alpha: -Int.max, beta: -currentAlpha)
+                let score = -negamax(board: board, depth: depth - 1, alpha: -ChessAI.infinity, beta: -currentAlpha)
                 _ = board.undoLastMove()
 
                 if score > bestScore {

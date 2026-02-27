@@ -143,10 +143,16 @@ class ChessTimer: ObservableObject {
         let seconds = Int(time) % 60
         let deciseconds = Int((time.truncatingRemainder(dividingBy: 1)) * 10)
 
-        if time < 60 {
-            return String(format: "%d.%d", seconds, deciseconds)
-        } else {
+        if time < 10 {
+            return String(format: "0:%02d.%d", seconds, deciseconds)
+        } else if time < 60 {
+            return String(format: "0:%02d", seconds)
+        } else if time < 3600 {
             return String(format: "%d:%02d", minutes, seconds)
+        } else {
+            let hours = minutes / 60
+            let remainingMinutes = minutes % 60
+            return String(format: "%d:%02d:%02d", hours, remainingMinutes, seconds)
         }
     }
 }

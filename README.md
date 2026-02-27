@@ -60,6 +60,7 @@ A comprehensive iOS chess game built with Swift and SwiftUI, featuring AI oppone
 - **Increment Support**: Automatic time addition after each move
 - **Time Pressure Warnings**: Visual indicators when time is running low
 - **Flag Fall Detection**: Automatic game end when time expires
+- **Smart Formatting**: Hours support for long time controls, decisecond precision under 10 seconds, and proper leading zeros
 
 ### Move History & Analysis
 - **Complete Move History**: View all moves in algebraic notation
@@ -81,7 +82,7 @@ A comprehensive iOS chess game built with Swift and SwiftUI, featuring AI oppone
 
 ### User Interface
 - **Modern Home Screen**: Professional menu with game mode selection
-- **Clean Board Display**: Intuitive chess board visualization
+- **Clean Board Display**: Intuitive chess board visualization with distinct Unicode symbols for white and black pieces
 - **Visual Indicators**:
   - Selected pieces (blue highlight)
   - Possible moves (green highlights/circles)
@@ -96,31 +97,48 @@ A comprehensive iOS chess game built with Swift and SwiftUI, featuring AI oppone
 
 ```
 ChessGame/
-├── ChessGameApp.swift               # Main app entry point
-├── Models/
-│   ├── ChessPiece.swift            # Piece definitions and types
-│   ├── ChessMove.swift             # Move representation and game records
-│   ├── ChessBoard.swift            # Board state and game logic
-│   ├── GameState.swift             # Game mode and settings
-│   ├── ChessTimer.swift            # Timer/clock implementation
-│   └── ChessPuzzle.swift           # Puzzle definitions and data
-├── ViewModels/
-│   └── ChessGameViewModel.swift    # Main game view model
-├── Views/
-│   ├── HomeView.swift              # Home screen and main menu
-│   ├── GameView.swift              # Main game view
-│   ├── GameSetupView.swift         # Game configuration screen
-│   ├── ChessBoardView.swift        # Board visualization
-│   ├── ChessPieceView.swift        # Piece rendering
-│   ├── MoveHistoryView.swift       # Move history display
-│   ├── TimerView.swift             # Timer/clock display
-│   ├── PuzzleMenuView.swift        # Puzzle selection menu
-│   ├── PuzzleGameView.swift        # Puzzle solving interface
-│   ├── SavedGamesView.swift        # Game history viewer
-│   └── SettingsView.swift          # App settings
-├── AI/
-│   └── ChessAI.swift               # AI opponent logic
-└── Info.plist                      # App configuration
+├── App/
+│   └── ChessGameApp.swift              # Main app entry point
+├── Core/
+│   ├── Models/
+│   │   ├── ChessPiece.swift            # Piece definitions and types
+│   │   ├── ChessMove.swift             # Move representation and game records
+│   │   ├── ChessBoard.swift            # Board state and game logic
+│   │   ├── GameState.swift             # Game mode and settings
+│   │   └── ChessTimer.swift            # Timer/clock implementation
+│   └── Theme/
+│       └── Theme.swift                 # App theming and colors
+├── Features/
+│   ├── Game/
+│   │   ├── ViewModels/
+│   │   │   └── ChessGameViewModel.swift    # Main game view model
+│   │   └── Views/
+│   │       ├── GameView.swift              # Main game view
+│   │       ├── ChessBoardView.swift        # Board visualization
+│   │       ├── ChessPieceView.swift        # Piece rendering
+│   │       ├── MoveHistoryView.swift       # Move history display
+│   │       └── TimerView.swift             # Timer/clock display
+│   ├── Puzzles/
+│   │   ├── ChessPuzzle.swift               # Puzzle definitions and data
+│   │   ├── PuzzleMenuView.swift            # Puzzle selection menu
+│   │   ├── PuzzleGameView.swift            # Puzzle solving interface
+│   │   └── PuzzleViewModel.swift           # Puzzle game logic
+│   ├── SavedGames/
+│   │   ├── SavedGamesManager.swift         # Game persistence
+│   │   └── SavedGamesView.swift            # Game history viewer
+│   ├── Settings/
+│   │   └── SettingsView.swift              # App settings
+│   └── Setup/
+│       ├── HomeView.swift                  # Home screen and main menu
+│       └── GameSetupView.swift             # Game configuration screen
+└── Services/
+    ├── ChessAI.swift                       # AI opponent (negamax + alpha-beta)
+    ├── GameAnalyzer.swift                  # Post-game analysis
+    ├── HintEngine.swift                    # Move hints and suggestions
+    ├── OpeningBook.swift                   # Opening move database
+    ├── PGNExporter.swift                   # PGN format export
+    ├── SoundManager.swift                  # Sound effects
+    └── StatsManager.swift                  # Player statistics
 ```
 
 ## Technical Details
@@ -131,9 +149,11 @@ ChessGame/
 - **Combine**: Reactive programming for state management
 
 ### AI Implementation
-The AI uses a minimax algorithm with the following features:
+The AI uses a negamax algorithm (minimax variant) with the following features:
 - **Alpha-beta pruning**: Optimizes search performance
-- **Position evaluation**: Considers material value, piece positioning, and mobility
+- **Overflow-safe bounds**: Uses a bounded infinity constant to prevent integer overflow during negation
+- **Position evaluation**: Considers material value, piece-square tables, and check bonuses
+- **Move ordering**: MVV-LVA (Most Valuable Victim - Least Valuable Attacker) for better pruning
 - **Variable depth**: Adjusts difficulty by changing search depth
 - **Asynchronous execution**: Runs on background thread to keep UI responsive
 
@@ -221,15 +241,6 @@ Since this is structured as source files, you'll need to create an Xcode project
 - Win on time if your opponent's clock runs out
 - The game detects checkmate and stalemate automatically
 - Choose to start a new game or return to the home screen
-
-## Recently Added Features ✨
-
-The following features were recently implemented:
-- ✅ **Home Screen**: Professional menu system with easy navigation
-- ✅ **Chess Puzzles**: 9 tactical puzzles across 4 difficulty levels
-- ✅ **Time Controls**: Full timer support with 7 preset time controls
-- ✅ **Move History**: Complete game notation in algebraic format
-- ✅ **Save/Load Games**: Automatic game record saving and viewing
 
 ## Future Enhancements
 
